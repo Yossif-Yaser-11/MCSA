@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0a0f1d">
+  <title>Rights Management Server - AD RMS | MCSA</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="../mcsa-theme.css">
+  <script src="../mcsa-interactions.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="site-header">
+      <p class="eyebrow"><i class="fa-brands fa-microsoft" aria-hidden="true"></i> MCSA | Windows Server</p>
+      <h1>Rights Management Server - AD RMS</h1>
+      <p>شرح نظري وتطبيق عملي لإدارة Windows Server.</p>
+    </header>
+    <a class="back-link" href="../index.html"><i class="fa-solid fa-arrow-right" aria-hidden="true"></i> العودة إلى فهرس الدروس</a>
+    <nav class="tab-nav" role="tablist" aria-label="أقسام الدرس">
+      <button class="tab-button" id="theory-tab" type="button" role="tab" aria-selected="true" aria-controls="tab-theory"><i class="fa-solid fa-book-open" aria-hidden="true"></i> الجزء النظري</button>
+      <button class="tab-button" id="practical-tab" type="button" role="tab" aria-selected="false" aria-controls="tab-practical"><i class="fa-solid fa-server" aria-hidden="true"></i> التطبيق العملي</button>
+    </nav>
+    <main class="lesson-content">
+<div class="tab-pane active" id="tab-theory">
+                <div class="theory"><p>الـ AD RMS (Active Directory Rights Management Services) بيحمى المستندات والمحتوى الحساس حتى بعد خروجه من الشركة. بيتحكم فى من يقدر يقرأ أو يعدّل أو يطبع أو يفوّد المستند.</p><h2 class="section-title">كيف يعمل AD RMS</h2><ol><li>المستخدم بينشئ مستند ويحدد الصلاحيات (مثلاً: Ahmed يقدر يقرأ بس، Sara تقدر تعدّل)</li><li>الـ RMS Client بيشفّر المستند ويحفظ الصلاحيات معاه</li><li>لما حد تانى يفتح المستند، الـ RMS Client بيتصل بالـ RMS Server للتحقق من صلاحياته</li><li>لو الشخص معهوش صلاحية، مش هيقدر يفتح المستند حتى لو نسخه</li></ol><h2 class="section-title">متطلبات AD RMS</h2><ul><li>Active Directory Domain Services</li><li>Microsoft SQL Server (للـ Database)</li><li>IIS</li><li>Certificate Authority</li><li>Service Account بصلاحيات محددة</li></ul><h2 class="section-title">التثبيت</h2><pre># تثبيت الـ Role
+Install-WindowsFeature -Name ADRMS -IncludeManagementTools
+
+# إعداد RMS Cluster (من الـ GUI)
+# Server Manager → AD RMS → Configure AD RMS
+# اختار: Create a new AD RMS root cluster
+# Database: SQL Server
+# Service Account: رمس_السيرفر
+# Cryptographic Mode: 2 (أأمن)</pre><h2 class="section-title">إنشاء Rights Policy Templates</h2><pre># من الـ GUI: AD RMS → Rights Policy Templates
+# New Template
+# اسم: "Confidential - Read Only"
+# إضافة Users/Groups
+# تحديد الـ Rights: View, Print (بدون Edit, Copy, Forward)
+
+# تصدير الـ Template للمستخدمين
+# يتوزع تلقائياً عبر GPO أو يدوياً</pre><h2 class="section-title">استخدام RMS فى Office</h2><p>فى Microsoft Word / Excel / Outlook:</p><ul><li>File → Info → Protect Document → Restrict Access</li><li>اختار الـ Template المناسب أو حدد الصلاحيات يدوياً</li><li>المستند يتشفّر تلقائياً</li></ul></div>
+            </div>
+
+    <div class="tab-pane" id="tab-practical">
+                <div class="theory"><h2 class="section-title">التطبيق العملى - AD RMS</h2><h3>تمرين 1: تثبيت AD RMS</h3><pre># قبل التثبيت: تأكد من وجود SQL Server
+# إنشاء Service Account
+New-ADUser -Name "RMS Service" -SamAccountName "svc-rms" -UserPrincipalName "svc-rms@networkat.local" -AccountPassword (ConvertTo-SecureString "RMS@Service123" -AsPlainText -Force) -Enabled $true -PasswordNeverExpires $true
+
+# تثبيت الـ Role
+Install-WindowsFeature -Name ADRMS, ADRMS-Server, ADRMS-Identity -IncludeManagementTools
+
+# من الـ GUI:
+# Server Manager → Notifications → Configure AD RMS
+# الخطوات: Cluster → Database (SQL) → Service Account → Key Settings → Cluster URL → SCP</pre><h3>تمرين 2: إنشاء Rights Templates</h3><pre># من AD RMS Management Console:
+# 1. Rights Policy Templates → New Template
+# Template 1: "View Only"
+#   - Users: Domain Users
+#   - Rights: View, ViewRightsData
+#   - Expiration: 30 days
+# Template 2: "Internal Use"
+#   - Users: Domain Users
+#   - Rights: View, Edit, Print
+#   - No expiration
+# Template 3: "Confidential"
+#   - Users: GG_Managers
+#   - Rights: FullControl
+#   - No expiration</pre><h3>تمرين 3: اختبار الحماية</h3><ol><li>افتح Word وابنى مستند حساس</li><li>File → Info → Protect → Restrict Access → Restricted Access</li><li>اختار Template "View Only" وحدد بريد المستقبل</li><li>احفظ المستند وابعته للمستخدم</li><li>المستخدم هيشوف بس مش هيقدر يعدّل أو ينسخ</li></ol></div>
+            </div>
+
+    </main>
+    <footer class="site-footer">دروس MCSA | Windows Server</footer>
+  </div>
+</body>
+</html>

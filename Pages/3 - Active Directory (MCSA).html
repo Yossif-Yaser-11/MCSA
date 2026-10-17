@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0a0f1d">
+  <title>Active Directory - قاعدة بيانات الشبكة | MCSA</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="../mcsa-theme.css">
+  <script src="../mcsa-interactions.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="site-header">
+      <p class="eyebrow"><i class="fa-brands fa-microsoft" aria-hidden="true"></i> MCSA | Windows Server</p>
+      <h1>Active Directory - قاعدة بيانات الشبكة</h1>
+      <p>شرح نظري وتطبيق عملي لإدارة Windows Server.</p>
+    </header>
+    <a class="back-link" href="../index.html"><i class="fa-solid fa-arrow-right" aria-hidden="true"></i> العودة إلى فهرس الدروس</a>
+    <nav class="tab-nav" role="tablist" aria-label="أقسام الدرس">
+      <button class="tab-button" id="theory-tab" type="button" role="tab" aria-selected="true" aria-controls="tab-theory"><i class="fa-solid fa-book-open" aria-hidden="true"></i> الجزء النظري</button>
+      <button class="tab-button" id="practical-tab" type="button" role="tab" aria-selected="false" aria-controls="tab-practical"><i class="fa-solid fa-server" aria-hidden="true"></i> التطبيق العملي</button>
+    </nav>
+    <main class="lesson-content">
+<div class="tab-pane active" id="tab-theory">
+    <div class="theory">
+        
+        <p>الـ Active Directory (AD) هو خدمة الدليل من Microsoft. بيخزّن معلومات عن كل حاجة فى الشبكة: المستخدمين، الأجهزة، المجموعات، السياسات، وبيوفّر خدمات المصادقة والتفويض.</p>
+        
+        <h2 class="section-title">مكونات الـ Active Directory</h2>
+        <ul>
+            <li><strong>Objects:</strong> أى عنصر فى الـ AD (مستخدم، جهاز، مجموعة، Printer)</li>
+            <li><strong>OU (Organizational Unit):</strong> مجلد لتنظيم الـ Objects</li>
+            <li><strong>Domain:</strong> حدود الإدارة الأساسية</li>
+            <li><strong>Tree:</strong> مجموعة Domains بنفس الـ Namespace</li>
+            <li><strong>Forest:</strong> أعلى مستوى - بيضم كل الـ Trees</li>
+        </ul>
+        
+        <h2 class="section-title">Active Directory Structure</h2>
+        <pre>Forest: company.com
+├── Tree: company.com
+│   ├── Domain: company.com (Root Domain)
+│   │   ├── OU: Users
+│   │   │   ├── User: Ahmed
+│   │   │   └── User: Sara
+│   │   ├── OU: Computers
+│   │   │   ├── Computer: PC-001
+│   │   │   └── Computer: SRV-01
+│   │   └── OU: Groups
+│   └── Child Domain: cairo.company.com
+└── Tree: subsidiary.com</pre>
+        
+        <h2 class="section-title">AD DS Services</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>الخدمة</th>
+                    <th>الاختصار</th>
+                    <th>الوظيفة</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Active Directory Domain Services</td>
+                    <td>AD DS</td>
+                    <td>الخدمة الرئيسية - إدارة الـ Domain</td>
+                </tr>
+                <tr>
+                    <td>Active Directory Certificate Services</td>
+                    <td>AD CS</td>
+                    <td>إصدار الشهادات الرقمية</td>
+                </tr>
+                <tr>
+                    <td>Active Directory Federation Services</td>
+                    <td>AD FS</td>
+                    <td>Single Sign-On بين Organizations</td>
+                </tr>
+                <tr>
+                    <td>Active Directory Lightweight Directory</td>
+                    <td>AD LDS</td>
+                    <td>Directory بدون Domain</td>
+                </tr>
+                <tr>
+                    <td>Active Directory Rights Management</td>
+                    <td>AD RMS</td>
+                    <td>حماية المستندات</td>
+                </tr>
+            </tbody>
+        </table>
+        
+        <h2 class="section-title">مصادقة الـ Active Directory</h2>
+        <p>الـ AD بيستخدم بروتوكول Kerberos للمصادقة:</p>
+        <ol>
+            <li>المستخدم بيدخل Username و Password</li>
+            <li>الـ DC بيتحقق ويدّى الـ TGT (Ticket Granting Ticket)</li>
+            <li>المستخدم بيستخدم الـ TGT عشان يطلب Service Tickets</li>
+            <li>السيرفرات بتقبل الـ Service Ticket بدون ما تتصل بالـ DC</li>
+        </ol>
+        
+        <h2 class="section-title">أوامر AD PowerShell المهمة</h2>
+        <pre># البحث فى الـ AD
+Get-ADUser -Filter * | Select Name, SamAccountName
+Get-ADComputer -Filter * | Select Name
+Get-ADGroup -Filter * | Select Name
+
+# معلومات تفصيلية
+Get-ADUser -Identity "ahmed" -Properties *
+
+# البحث بشرط
+Get-ADUser -Filter {Department -eq "IT"}</pre>
+    </div>
+</div>
+
+<div class="tab-pane" id="tab-practical">
+    <div class="theory">
+        <h2 class="section-title">التطبيق العملى - Active Directory</h2>
+        
+        <h3>تمرين 1: إنشاء Structure منظم</h3>
+        <pre># إنشاء OUs
+New-ADOrganizationalUnit -Name "IT_Department" -Path "DC=networkat,DC=local"
+New-ADOrganizationalUnit -Name "HR_Department" -Path "DC=networkat,DC=local"
+New-ADOrganizationalUnit -Name "Servers" -Path "DC=networkat,DC=local"
+
+# إنشاء Sub-OUs
+New-ADOrganizationalUnit -Name "Users" -Path "OU=IT_Department,DC=networkat,DC=local"
+New-ADOrganizationalUnit -Name "Computers" -Path "OU=IT_Department,DC=networkat,DC=local"</pre>
+        
+        <h3>تمرين 2: استعراض الـ AD</h3>
+        <pre># عرض كل الـ OUs
+Get-ADOrganizationalUnit -Filter * | Select Name, DistinguishedName
+
+# عرض Objects فى OU معين
+Get-ADObject -Filter * -SearchBase "OU=IT_Department,DC=networkat,DC=local"
+
+# عرض معلومات الـ Domain
+Get-ADDomain | Select DNSRoot, NetBIOSName, DomainMode, PDCEmulator</pre>
+        
+        <h3>تمرين 3: AD Users and Computers (GUI)</h3>
+        <ol>
+            <li>افتح Active Directory Users and Computers</li>
+            <li>استعرض هيكل الـ Domain</li>
+            <li>اعمل OU جديدة باسم "Networkat_Staff"</li>
+            <li>جوّالها اعمل Users و Computers Sub-OUs</li>
+            <li>جرب تسحب User من مكان لتانى</li>
+        </ol>
+    </div>
+</div>
+    </main>
+    <footer class="site-footer">دروس MCSA | Windows Server</footer>
+  </div>
+</body>
+</html>

@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0a0f1d">
+  <title>Network Protection System فى Windows Server | MCSA</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="../mcsa-theme.css">
+  <script src="../mcsa-interactions.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="site-header">
+      <p class="eyebrow"><i class="fa-brands fa-microsoft" aria-hidden="true"></i> MCSA | Windows Server</p>
+      <h1>Network Protection System فى Windows Server</h1>
+      <p>شرح نظري وتطبيق عملي لإدارة Windows Server.</p>
+    </header>
+    <a class="back-link" href="../index.html"><i class="fa-solid fa-arrow-right" aria-hidden="true"></i> العودة إلى فهرس الدروس</a>
+    <nav class="tab-nav" role="tablist" aria-label="أقسام الدرس">
+      <button class="tab-button" id="theory-tab" type="button" role="tab" aria-selected="true" aria-controls="tab-theory"><i class="fa-solid fa-book-open" aria-hidden="true"></i> الجزء النظري</button>
+      <button class="tab-button" id="practical-tab" type="button" role="tab" aria-selected="false" aria-controls="tab-practical"><i class="fa-solid fa-server" aria-hidden="true"></i> التطبيق العملي</button>
+    </nav>
+    <main class="lesson-content">
+ <div class="tab-pane active" id="tab-theory">
+                <div class="theory"><p>الحماية الكاملة للشبكة بتحتاج أكتر من Firewall. Windows Server بيوفّر مجموعة من الأدوات للحماية المتكاملة.</p><h2 class="section-title">NAP - Network Access Protection</h2><p>الـ NAP بيتحقق من صحة الجهاز قبل ما يسمحله يدخل الشبكة. لو الجهاز مش محدّث أو عليه فيروس، بيتحوّله لـ Quarantine Network.</p><ul><li><strong>Health Policies:</strong> بتحدد متطلبات صحة الجهاز (مثلاً Windows Update مفعّل، Antivirus محدّث)</li><li><strong>Network Policies:</strong> بتحدد ماذا يحدث لو الجهاز مش سليم</li><li><strong>Remediation:</strong> إصلاح تلقائى للمشاكل المكتشفة</li></ul><h2 class="section-title">Windows Defender</h2><pre># التحقق من حالة Windows Defender
+Get-MpComputerStatus
+
+# تحديث التعريفات
+Update-MpSignature
+
+# فحص سريع
+Start-MpScan -ScanType QuickScan
+
+# فحص شامل
+Start-MpScan -ScanType FullScan
+
+# إضافة Exclusion
+Add-MpPreference -ExclusionPath "D:\SQL_Data"
+
+# عرض الـ Threats المكتشفة
+Get-MpThreatDetection</pre><h2 class="section-title">Advanced Threat Protection</h2><ul><li><strong>Microsoft Defender ATP:</strong> حماية متقدمة ضد التهديدات</li><li><strong>Credential Guard:</strong> حماية بيانات الاعتماد</li><li><strong>Device Guard:</strong> منع تشغيل الكود غير الموثوق</li><li><strong>EMET (Enhanced Mitigation Experience Toolkit):</strong> حماية إضافية للتطبيقات</li></ul><h2 class="section-title">Security Auditing</h2><pre># تفعيل الـ Audit Policies
+AuditPol /set /category:"Logon/Logoff" /success:enable /failure:enable
+AuditPol /set /category:"Account Management" /success:enable /failure:enable
+AuditPol /set /category:"Object Access" /success:enable /failure:enable
+
+# قراءة الـ Security Events
+Get-WinEvent -LogName Security | Where-Object {$_.Id -eq 4625} | Select TimeCreated, Message | head -10
+# Event 4625: Failed Logon
+# Event 4624: Successful Logon
+# Event 4720: User Account Created
+# Event 4740: Account Locked Out</pre></div>
+            </div>
+
+    <div class="tab-pane" id="tab-practical">
+                <div class="theory"><h2 class="section-title">التطبيق العملى - Network Protection</h2><h3>تمرين 1: Windows Defender Management</h3><pre># إعداد Windows Defender عبر PowerShell
+Set-MpPreference -DisableRealtimeMonitoring $false
+Set-MpPreference -SignatureUpdateInterval 4  # تحديث كل 4 ساعات
+Set-MpPreference -SubmitSamplesConsent 2      # إرسال Samples تلقائياً
+Set-MpPreference -MAPSReporting Advanced      # الانضمام لـ MAPS
+
+# Scheduled Scan
+Set-MpPreference -ScanScheduleDay 7          # كل أحد
+Set-MpPreference -ScanScheduleTime 120        # الساعة 2 صباحاً
+
+# التحقق من الإعدادات
+Get-MpPreference | Select DisableRealtimeMonitoring, SignatureUpdateInterval, ScanScheduleDay</pre><h3>تمرين 2: Security Event Monitoring</h3><pre># Script لمراقبة محاولات الاختراق
+$failedLogons = Get-WinEvent -LogName Security -FilterHashtable @{Id=4625} | `
+    Where-Object {$_.TimeCreated -gt (Get-Date).AddHours(-1)} | `
+    Select TimeCreated, @{N="Account";E={$_.Properties[5].Value}}, @{N="SourceIP";E={$_.Properties[19].Value}}
+
+$failedLogons | Group-Object SourceIP | Sort-Object Count -Descending | Select Count, Name
+
+# لو IP معين بيحاول أكتر من 10 مرات
+$suspiciousIPs = $failedLogons | Group-Object SourceIP | Where-Object {$_.Count -gt 10}
+$suspiciousIPs | ForEach-Object {
+    Write-Host "ALERT: Brute Force from $($_.Name) - $($_.Count) attempts" -ForegroundColor Red
+    # ممكن تبلوكه تلقائياً بالـ Firewall
+    New-NetFirewallRule -DisplayName "Block $($_.Name)" -Direction Inbound -RemoteAddress $_.Name -Action Block
+}</pre></div>
+            </div>
+    </main>
+    <footer class="site-footer">دروس MCSA | Windows Server</footer>
+  </div>
+</body>
+</html>

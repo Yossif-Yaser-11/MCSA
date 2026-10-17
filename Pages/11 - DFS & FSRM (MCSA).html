@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0a0f1d">
+  <title>DFS و FSRM | MCSA</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="../mcsa-theme.css">
+  <script src="../mcsa-interactions.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="site-header">
+      <p class="eyebrow"><i class="fa-brands fa-microsoft" aria-hidden="true"></i> MCSA | Windows Server</p>
+      <h1>DFS و FSRM</h1>
+      <p>شرح نظري وتطبيق عملي لإدارة Windows Server.</p>
+    </header>
+    <a class="back-link" href="../index.html"><i class="fa-solid fa-arrow-right" aria-hidden="true"></i> العودة إلى فهرس الدروس</a>
+    <nav class="tab-nav" role="tablist" aria-label="أقسام الدرس">
+      <button class="tab-button" id="theory-tab" type="button" role="tab" aria-selected="true" aria-controls="tab-theory"><i class="fa-solid fa-book-open" aria-hidden="true"></i> الجزء النظري</button>
+      <button class="tab-button" id="practical-tab" type="button" role="tab" aria-selected="false" aria-controls="tab-practical"><i class="fa-solid fa-server" aria-hidden="true"></i> التطبيق العملي</button>
+    </nav>
+    <main class="lesson-content">
+ <div class="tab-pane active" id="tab-theory">
+                <div class="theory"><h2 class="section-title">DFS - Distributed File System</h2><p>الـ DFS بيخليك تنظّم الـ Shared Folders من سيرفرات مختلفة تحت Namespace واحدة موحدة. المستخدمين بيشوفوا مسار واحد بسيط بدل ما يتذكروا اسم كل سيرفر.</p><h3>مكونات DFS</h3><ul><li><strong>DFS Namespace:</strong> الشجرة الافتراضية (مثلاً \networkat.local\Data)</li><li><strong>DFS Replication:</strong> مزامنة الملفات بين السيرفرات تلقائياً</li><li><strong>DFS Folder Targets:</strong> المسارات الفعلية للـ Shared Folders</li></ul><pre># تثبيت DFS
+Install-WindowsFeature -Name FS-DFS-Namespace, FS-DFS-Replication -IncludeManagementTools
+
+# إنشاء DFS Namespace
+New-DfsnRoot -Path "\\networkat.local\Data" -TargetPath "\\SRV-File01\Data" -Type DomainV2
+
+# إضافة مجلدات
+New-DfsnFolder -Path "\\networkat.local\Data\HR" -TargetPath "\\SRV-File01\HR$"
+New-DfsnFolder -Path "\\networkat.local\Data\IT" -TargetPath "\\SRV-File01\IT$"
+
+# إضافة Target ثانى للـ Redundancy
+New-DfsnFolderTarget -Path "\\networkat.local\Data\HR" -TargetPath "\\SRV-File02\HR$"</pre><h2 class="section-title">DFS Replication</h2><pre># إنشاء Replication Group
+New-DfsReplicationGroup -GroupName "HR_Replication"
+Add-DfsrMember -GroupName "HR_Replication" -ComputerName "SRV-File01","SRV-File02"
+New-DfsReplicatedFolder -GroupName "HR_Replication" -FolderName "HR_Data"
+Add-DfsrConnection -GroupName "HR_Replication" -SourceComputerName "SRV-File01" -DestinationComputerName "SRV-File02"</pre><h2 class="section-title">FSRM - File Server Resource Manager</h2><p>الـ FSRM بيوفّر أدوات متقدمة لإدارة الـ Storage:</p><ul><li>Quota Management: تحديد حصص الـ Storage</li><li>File Screening: منع أنواع ملفات معينة</li><li>Storage Reports: تقارير تفصيلية عن الاستخدام</li></ul><pre># تثبيت FSRM
+Install-WindowsFeature -Name FS-Resource-Manager -IncludeManagementTools
+
+# Storage Report
+New-FsrmStorageReport -Name "Weekly_Report" `
+    -Namespace "D:\Company" `
+    -ReportType @("LargeFiles","QuotaUsage","FilesByOwner") `
+    -Schedule (New-FsrmScheduledTask -Weekly -Day Sunday -Time "02:00")</pre></div>
+            </div>
+
+    <div class="tab-pane" id="tab-practical">
+                <div class="theory"><h2 class="section-title">التطبيق العملى - DFS</h2><h3>تمرين 1: DFS Namespace</h3><pre># على SRV-DC01
+Install-WindowsFeature -Name FS-DFS-Namespace, FS-DFS-Replication -IncludeManagementTools
+
+# إنشاء الـ Namespace
+New-DfsnRoot -Path "\\networkat.local\Company" -TargetPath "\\SRV-File01\Company" -Type DomainV2
+
+# إضافة الأقسام
+$shares = @("HR","IT","Finance","Shared","Management")
+foreach ($share in $shares) {
+    New-DfsnFolder -Path "\\networkat.local\Company\$share" -TargetPath "\\SRV-File01\$share`$"
+    Write-Host "Added: $share"
+}
+
+# التحقق
+Get-DfsnFolder -Path "\\networkat.local\Company\*"</pre><h3>تمرين 2: DFS Replication</h3><pre># إعداد Replication بين سيرفرين
+New-DfsReplicationGroup -GroupName "Company_Replication" -Description "Replicate Company Data"
+Add-DfsrMember -GroupName "Company_Replication" -ComputerName "SRV-File01","SRV-File02"
+
+$folders = @("HR","IT","Shared")
+foreach ($folder in $folders) {
+    New-DfsReplicatedFolder -GroupName "Company_Replication" -FolderName $folder
+}
+
+Add-DfsrConnection -GroupName "Company_Replication" `
+    -SourceComputerName "SRV-File01" `
+    -DestinationComputerName "SRV-File02" `
+    -CreateOneWay $false
+
+# التحقق من الـ Replication
+Get-DfsrState -GroupName "Company_Replication"</pre></div>
+            </div>
+
+    </main>
+    <footer class="site-footer">دروس MCSA | Windows Server</footer>
+  </div>
+</body>
+</html>

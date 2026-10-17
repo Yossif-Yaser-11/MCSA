@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0a0f1d">
+  <title>Bulk User Creation فى Active Directory | MCSA</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="../mcsa-theme.css">
+  <script src="../mcsa-interactions.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="site-header">
+      <p class="eyebrow"><i class="fa-brands fa-microsoft" aria-hidden="true"></i> MCSA | Windows Server</p>
+      <h1>Bulk User Creation فى Active Directory</h1>
+      <p>شرح نظري وتطبيق عملي لإدارة Windows Server.</p>
+    </header>
+    <a class="back-link" href="../index.html"><i class="fa-solid fa-arrow-right" aria-hidden="true"></i> العودة إلى فهرس الدروس</a>
+    <nav class="tab-nav" role="tablist" aria-label="أقسام الدرس">
+      <button class="tab-button" id="theory-tab" type="button" role="tab" aria-selected="true" aria-controls="tab-theory"><i class="fa-solid fa-book-open" aria-hidden="true"></i> الجزء النظري</button>
+      <button class="tab-button" id="practical-tab" type="button" role="tab" aria-selected="false" aria-controls="tab-practical"><i class="fa-solid fa-server" aria-hidden="true"></i> التطبيق العملي</button>
+    </nav>
+    <main class="lesson-content">
+<!-- Tab Theory -->
+<div class="tab-pane active" id="tab-theory">                
+    <div class="theory">
+        
+        <p>فى الشركات الكبيرة، ممكن تحتاج تنشئ مئات أو آلاف الـ Users فى وقت واحد. الـ Bulk Creation بيوفّر وقت ومجهود ضخم.</p>
+        
+        <h2 class="section-title">طرق الـ Bulk Creation</h2>
+        <ul>
+            <li><strong>CSV + PowerShell:</strong> الأسهل والأشمل - بتجهز ملف Excel وبتشغّله</li>
+            <li><strong>LDIFDE:</strong> أداة سطر أوامر - بتستخدم ملفات LDIF</li>
+            <li><strong>CSVDE:</strong> أداة سطر أوامر - بتستخدم ملفات CSV مباشرة</li>
+            <li><strong>AD Administrative Center:</strong> واجهة رسومية - للعمليات الفردية</li>
+        </ul>
+        
+        <h2 class="section-title">Bulk Import بـ CSV و PowerShell</h2>
+        <h3>خطوة 1: تجهيز ملف CSV</h3>
+        <pre>Name,SamAccountName,GivenName,Surname,Department,Title,Email
+Ahmed Ali,ahmed.ali,Ahmed,Ali,IT,Engineer,ahmed.ali@networkat.local
+Sara Omar,sara.omar,Sara,Omar,HR,Manager,sara.omar@networkat.local
+Mohamed Khaled,mohamed.khaled,Mohamed,Khaled,Finance,Accountant,m.khaled@networkat.local</pre>
+        
+        <h3>خطوة 2: Script الاستيراد</h3>
+        <pre>$users = Import-Csv -Path "C:\Users.csv"
+$defaultPassword = ConvertTo-SecureString "Welcome@2024" -AsPlainText -Force
+foreach ($user in $users) {    
+    try {        
+        $ouPath = "OU=Users,OU=$($user.Department)_Department,DC=networkat,DC=local"                
+        New-ADUser `            
+            -Name $user.Name `            
+            -SamAccountName $user.SamAccountName `            
+            -UserPrincipalName "$($user.SamAccountName)@networkat.local" `            
+            -GivenName $user.GivenName `            
+            -Surname $user.Surname `            
+            -Department $user.Department `            
+            -Title $user.Title `            
+            -EmailAddress $user.Email `            
+            -Path $ouPath `            
+            -AccountPassword $defaultPassword `            
+            -Enabled $true `            
+            -ChangePasswordAtLogon $true                
+        Write-Host "✅ Created: $($user.Name)" -ForegroundColor Green    
+    }    
+    catch {        
+        Write-Host "❌ Error creating $($user.Name): $($_.Exception.Message)" -ForegroundColor Red    
+    }
+}
+Write-Host "Import Complete!"</pre>
+        
+        <h2 class="section-title">Bulk Export</h2>
+        <pre># Export كل الـ Users لـ CSV
+Get-ADUser -Filter * -Properties Department,Title,EmailAddress | `    
+    Select Name,SamAccountName,Department,Title,EmailAddress,Enabled | `    
+    Export-Csv -Path "C:\AD_Users_Export.csv" -NoTypeInformation
+
+# Export Users من Department معين
+Get-ADUser -Filter {Department -eq "IT"} -Properties Department | `    
+    Select Name,SamAccountName,Department | `    
+    Export-Csv -Path "C:\IT_Users.csv" -NoTypeInformation</pre>
+    </div>            
+</div>
+
+<!-- Tab Practical -->
+<div class="tab-pane" id="tab-practical">                
+    <div class="theory">
+        <h2 class="section-title">التطبيق العملى - Bulk Operations</h2>
+        
+        <h3>تمرين 1: استيراد Users من CSV</h3>
+        <ol>
+            <li>اعمل ملف CSV على Desktop باسم users.csv</li>
+            <li>حط فيه 10 Users من أقسام مختلفة</li>
+            <li>شغّل الـ Script اللى فوق</li>
+            <li>تحقق من الـ AD إن الـ Users اتعملوا</li>
+        </ol>
+        
+        <h3>تمرين 2: Bulk Disable Users</h3>
+        <pre># تعطيل كل Users قسم معين
+Get-ADUser -Filter {Department -eq "Resigned"} | Disable-ADAccount
+
+# تعطيل Users من CSV
+$users = Import-Csv "C:\resigned_users.csv"
+$users | ForEach-Object {    
+    Disable-ADAccount -Identity $_.SamAccountName    
+    Write-Host "Disabled: $($_.Name)"
+}</pre>
+        
+        <h3>تمرين 3: Bulk Password Reset</h3>
+        <pre># Reset كلمة سر لـ Group معينة
+$groupMembers = Get-ADGroupMember -Identity "GG_New_Employees"
+$newPassword = ConvertTo-SecureString "TempPass@123" -AsPlainText -Force
+
+foreach ($member in $groupMembers) {    
+    Set-ADAccountPassword -Identity $member.SamAccountName -Reset -NewPassword $newPassword    
+    Set-ADUser -Identity $member.SamAccountName -ChangePasswordAtLogon $true    
+    Write-Host "Password reset for: $($member.Name)"
+}</pre>
+    </div>            
+</div>
+    </main>
+    <footer class="site-footer">دروس MCSA | Windows Server</footer>
+  </div>
+</body>
+</html>

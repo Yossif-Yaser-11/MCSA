@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0a0f1d">
+  <title>Disk Storage فى Windows Server | MCSA</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="../mcsa-theme.css">
+  <script src="../mcsa-interactions.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="site-header">
+      <p class="eyebrow"><i class="fa-brands fa-microsoft" aria-hidden="true"></i> MCSA | Windows Server</p>
+      <h1>Disk Storage فى Windows Server</h1>
+      <p>شرح نظري وتطبيق عملي لإدارة Windows Server.</p>
+    </header>
+    <a class="back-link" href="../index.html"><i class="fa-solid fa-arrow-right" aria-hidden="true"></i> العودة إلى فهرس الدروس</a>
+    <nav class="tab-nav" role="tablist" aria-label="أقسام الدرس">
+      <button class="tab-button" id="theory-tab" type="button" role="tab" aria-selected="true" aria-controls="tab-theory"><i class="fa-solid fa-book-open" aria-hidden="true"></i> الجزء النظري</button>
+      <button class="tab-button" id="practical-tab" type="button" role="tab" aria-selected="false" aria-controls="tab-practical"><i class="fa-solid fa-server" aria-hidden="true"></i> التطبيق العملي</button>
+    </nav>
+    <main class="lesson-content">
+<div class="tab-pane active" id="tab-theory">                
+    <div class="theory">
+        
+        <p>إدارة الأقراص الصلبة من أهم مهام الـ Windows Server Administrator. لازم تفهم الفرق بين أنواع الأقراص وطرق تقسيمها وإدارتها.</p>
+        
+        <h2 class="section-title">أنواع الأقراص</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>النوع</th>
+                    <th>الوصف</th>
+                    <th>الحد الأقصى</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Basic Disk</td>
+                    <td>الافتراضى - بيستخدم Partitions عادية</td>
+                    <td>4 Primary Partitions</td>
+                </tr>
+                <tr>
+                    <td>Dynamic Disk</td>
+                    <td>متقدم - بيدعم Volumes معقدة</td>
+                    <td>غير محدود</td>
+                </tr>
+                <tr>
+                    <td>GPT (GUID Partition Table)</td>
+                    <td>الحديث - بيدعم أقراص أكبر من 2TB</td>
+                    <td>128 Partition</td>
+                </tr>
+                <tr>
+                    <td>MBR (Master Boot Record)</td>
+                    <td>القديم - محدود</td>
+                    <td>4 Primary / 2TB</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2 class="section-title">أنواع Dynamic Volumes</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>النوع</th>
+                    <th>الأقراص</th>
+                    <th>الأداء</th>
+                    <th>الحماية</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Simple Volume</td>
+                    <td>1</td>
+                    <td>عادى</td>
+                    <td>لا يوجد</td>
+                </tr>
+                <tr>
+                    <td>Spanned Volume</td>
+                    <td>2-32</td>
+                    <td>عادى</td>
+                    <td>لا يوجد</td>
+                </tr>
+                <tr>
+                    <td>Striped (RAID-0)</td>
+                    <td>2-32</td>
+                    <td>ممتاز</td>
+                    <td>لا يوجد</td>
+                </tr>
+                <tr>
+                    <td>Mirrored (RAID-1)</td>
+                    <td>2</td>
+                    <td>قراءة أسرع</td>
+                    <td>نعم (نسخة كاملة)</td>
+                </tr>
+                <tr>
+                    <td>RAID-5</td>
+                    <td>3-32</td>
+                    <td>جيد</td>
+                    <td>نعم (Parity)</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2 class="section-title">Storage Spaces</h2>
+        <p>الـ Storage Spaces ميزة حديثة بتخليك تجمّع أقراص فيزيائية فى Pool واحد وتعمل منه Spaces (Virtual Disks) بخصائص مختلفة.</p>
+        <pre># PowerShell - إنشاء Storage Pool
+$disks = Get-PhysicalDisk -CanPool $true
+New-StoragePool -FriendlyName "DataPool" -StorageSubsystemFriendlyName "Windows Storage*" -PhysicalDisks $disks
+
+# إنشاء Virtual Disk بـ RAID-5
+New-VirtualDisk -StoragePoolFriendlyName "DataPool" -FriendlyName "DataDisk" -Size 500GB -ResiliencySettingName "Parity"
+
+# تهيئة وإضافة Drive Letter
+Initialize-Disk -FriendlyName "DataDisk"
+New-Partition -DiskNumber 2 -UseMaximumSize -DriveLetter E
+Format-Volume -DriveLetter E -FileSystem NTFS -NewFileSystemLabel "Data"</pre>
+
+        <h2 class="section-title">أوامر إدارة الأقراص</h2>
+        <pre># عرض الأقراص
+Get-Disk
+Get-Partition
+Get-Volume
+
+# تهيئة قرص جديد
+Initialize-Disk -Number 1 -PartitionStyle GPT
+
+# إنشاء Partition
+New-Partition -DiskNumber 1 -UseMaximumSize -DriveLetter D
+Format-Volume -DriveLetter D -FileSystem NTFS -NewFileSystemLabel "Data" -Confirm:$false</pre>
+    </div>            
+</div>
+
+<div class="tab-pane" id="tab-practical">                
+    <div class="theory">
+        <h2 class="section-title">التطبيق العملى - Disk Storage</h2>
+        <h3>تمرين 1: إضافة قرص جديد</h3>
+        <ol>
+            <li>فى الـ VM أضف قرص جديد 50 GB</li>
+            <li>افتح Disk Management (diskmgmt.msc)</li>
+            <li>الـ Disk الجديد هيظهر كـ Unknown/Not Initialized</li>
+            <li>كليك يمين ← Initialize Disk ← اختار GPT</li>
+            <li>كليك يمين على المساحة الفاضية ← New Simple Volume</li>
+            <li>دّيه Drive Letter (مثلاً D:)</li>
+            <li>هيّئه بـ NTFS</li>
+        </ol>
+
+        <h3>تمرين 2: PowerShell Disk Management</h3>
+        <pre># عرض الأقراص
+Get-Disk | Select Number, FriendlyName, Size, PartitionStyle, OperationalStatus
+
+# تهيئة قرص رقم 1
+Initialize-Disk -Number 1 -PartitionStyle GPT
+New-Partition -DiskNumber 1 -UseMaximumSize -DriveLetter E
+Format-Volume -DriveLetter E -FileSystem NTFS -NewFileSystemLabel "Data" -Confirm:$false
+
+# التحقق
+Get-Volume -DriveLetter E</pre>
+
+        <h3>تمرين 3: RAID-1 Mirror</h3>
+        <pre># تحويل لـ Dynamic Disk أولاً
+Set-Disk -Number 1 -IsOffline $false
+Set-Disk -Number 2 -IsOffline $false
+
+# إنشاء Mirror (من Disk Management GUI)
+# 1. كليك يمين على الـ Volume ← Add Mirror
+# 2. اختار الـ Disk التانى
+# 3. Resync هيبدأ تلقائياً</pre>
+    </div>            
+</div>
+    </main>
+    <footer class="site-footer">دروس MCSA | Windows Server</footer>
+  </div>
+</body>
+</html>

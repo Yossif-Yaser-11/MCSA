@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0a0f1d">
+  <title>WDS - الجزء الثانى - Answer Files و Customization | MCSA</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="../mcsa-theme.css">
+  <script src="../mcsa-interactions.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="site-header">
+      <p class="eyebrow"><i class="fa-brands fa-microsoft" aria-hidden="true"></i> MCSA | Windows Server</p>
+      <h1>WDS - الجزء الثانى - Answer Files و Customization</h1>
+      <p>شرح نظري وتطبيق عملي لإدارة Windows Server.</p>
+    </header>
+    <a class="back-link" href="../index.html"><i class="fa-solid fa-arrow-right" aria-hidden="true"></i> العودة إلى فهرس الدروس</a>
+    <nav class="tab-nav" role="tablist" aria-label="أقسام الدرس">
+      <button class="tab-button" id="theory-tab" type="button" role="tab" aria-selected="true" aria-controls="tab-theory"><i class="fa-solid fa-book-open" aria-hidden="true"></i> الجزء النظري</button>
+      <button class="tab-button" id="practical-tab" type="button" role="tab" aria-selected="false" aria-controls="tab-practical"><i class="fa-solid fa-server" aria-hidden="true"></i> التطبيق العملي</button>
+    </nav>
+    <main class="lesson-content">
+<div class="tab-pane active" id="tab-theory">
+                <div class="theory"><p>الـ Answer File (Unattend.xml) بيخليك تعمل تثبيت تلقائى كامل بدون ما تتدخل يدوياً. كل الإعدادات (اسم الجهاز، كلمة السر، الـ Domain) بتتحدد مسبقاً.</p><h2 class="section-title">Windows System Image Manager (WSIM)</h2><p>الأداة الرسمية من Microsoft لإنشاء الـ Answer Files. بتجيها مع الـ Windows ADK.</p><h2 class="section-title">مراحل الـ Answer File</h2><table><tr><th>المرحلة</th><th>التوقيت</th><th>الاستخدام</th></tr><tr><td>windowsPE</td><td>أول التثبيت</td><td>إعدادات القرص واللغة</td></tr><tr><td>offlineServicing</td><td>بعد النسخ</td><td>إضافة Drivers والـ Updates</td></tr><tr><td>specialize</td><td>أثناء التخصيص</td><td>اسم الجهاز، انضمام الـ Domain</td></tr><tr><td>oobeSystem</td><td>أول تشغيل</td><td>المستخدم، كلمة السر، الـ Timezone</td></tr></table><h2 class="section-title">مثال Answer File بسيط</h2><pre>&lt;?xml version="1.0" encoding="utf-8"?&gt;
+&lt;unattend xmlns="urn:schemas-microsoft-com:unattend"&gt;
+  &lt;settings pass="specialize"&gt;
+    &lt;component name="Microsoft-Windows-Shell-Setup"&gt;
+      &lt;ComputerName&gt;SRV-NEW&lt;/ComputerName&gt;
+      &lt;RegisteredOrganization&gt;Networkat&lt;/RegisteredOrganization&gt;
+    &lt;/component&gt;
+    &lt;component name="Microsoft-Windows-UnattendedJoin"&gt;
+      &lt;Identification&gt;
+        &lt;JoinDomain&gt;networkat.local&lt;/JoinDomain&gt;
+        &lt;Credentials&gt;
+          &lt;Domain&gt;networkat.local&lt;/Domain&gt;
+          &lt;Username&gt;Administrator&lt;/Username&gt;
+          &lt;Password&gt;Admin@Pass123&lt;/Password&gt;
+        &lt;/Credentials&gt;
+      &lt;/Identification&gt;
+    &lt;/component&gt;
+  &lt;/settings&gt;
+  &lt;settings pass="oobeSystem"&gt;
+    &lt;component name="Microsoft-Windows-Shell-Setup"&gt;
+      &lt;AutoLogon&gt;
+        &lt;Password&gt;&lt;Value&gt;Admin@Pass123&lt;/Value&gt;&lt;/Password&gt;
+        &lt;Username&gt;Administrator&lt;/Username&gt;
+        &lt;LogonCount&gt;1&lt;/LogonCount&gt;
+        &lt;Enabled&gt;true&lt;/Enabled&gt;
+      &lt;/AutoLogon&gt;
+    &lt;/component&gt;
+  &lt;/settings&gt;
+&lt;/unattend&gt;</pre><h2 class="section-title">ربط Answer File بـ WDS</h2><pre># ربط Answer File بالـ Install Image
+Set-WdsInstallImage -ImageName "WS2016 Standard" -ImageGroup "Windows Server 2016" -UnattendFile "C:\Unattend.xml"
+
+# أو ربط بـ Computer Group معين
+New-WdsClient -DeviceID "MAC:00-11-22-33-44-55" -DeviceName "SRV-NEW" -JoinDomain $true -PxePromptPolicy OptOut -WdsClientUnattend "C:\Unattend.xml"</pre></div>
+            </div>
+
+    <div class="tab-pane" id="tab-practical">
+                <div class="theory"><h2 class="section-title">التطبيق العملى - WDS Answer Files</h2><h3>تمرين 1: تثبيت Windows ADK</h3><ol><li>حمّل Windows ADK من موقع Microsoft</li><li>ثبّت Deployment Tools و Windows PE</li><li>افتح Windows System Image Manager (WSIM)</li><li>افتح ملف catalog من الـ ISO (sources\install.wim)</li></ol><h3>تمرين 2: إنشاء Answer File</h3><pre># بعد إنشاء الـ Unattend.xml من WSIM
+# اختبار الـ Answer File
+C:\Windows\System32\sysprep\sysprep.exe /oobe /generalize /unattend:C:\Unattend.xml
+
+# رفع الـ Answer File لـ WDS
+Copy-Item "C:\Unattend.xml" "D:\RemoteInstall\WdsClientUnattend\WS2016_Unattend.xml"</pre><h3>تمرين 3: Capture Image (من جهاز جاهز)</h3><pre># لو عندك جهاز معمول عليه الإعدادات، تقدر تعمل Capture
+# 1. على الجهاز المصدر: Sysprep أولاً
+C:\Windows\System32\sysprep\sysprep.exe /oobe /generalize /shutdown
+
+# 2. Boot الجهاز من WDS
+# 3. اختار Capture Image بدل Install
+# 4. احفظ الـ Image على الـ WDS Server
+# 5. استخدمه لتثبيت نفس الـ Setup على أجهزة كتير</pre></div>
+            </div>
+    </main>
+    <footer class="site-footer">دروس MCSA | Windows Server</footer>
+  </div>
+</body>
+</html>

@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0a0f1d">
+  <title>Routing فى Windows Server | MCSA</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="../mcsa-theme.css">
+  <script src="../mcsa-interactions.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="site-header">
+      <p class="eyebrow"><i class="fa-brands fa-microsoft" aria-hidden="true"></i> MCSA | Windows Server</p>
+      <h1>Routing فى Windows Server</h1>
+      <p>شرح نظري وتطبيق عملي لإدارة Windows Server.</p>
+    </header>
+    <a class="back-link" href="../index.html"><i class="fa-solid fa-arrow-right" aria-hidden="true"></i> العودة إلى فهرس الدروس</a>
+    <nav class="tab-nav" role="tablist" aria-label="أقسام الدرس">
+      <button class="tab-button" id="theory-tab" type="button" role="tab" aria-selected="true" aria-controls="tab-theory"><i class="fa-solid fa-book-open" aria-hidden="true"></i> الجزء النظري</button>
+      <button class="tab-button" id="practical-tab" type="button" role="tab" aria-selected="false" aria-controls="tab-practical"><i class="fa-solid fa-server" aria-hidden="true"></i> التطبيق العملي</button>
+    </nav>
+    <main class="lesson-content">
+ <div class="tab-pane active" id="tab-theory">
+                <div class="theory"><p>Windows Server بيقدر يشتغل كـ Router بين الشبكات المختلفة باستخدام خدمة RRAS (Routing and Remote Access Service).</p><h2 class="section-title">RRAS - Routing and Remote Access Service</h2><p>الـ RRAS بيوفّر:</p><ul><li><strong>IP Routing:</strong> توجيه الـ Traffic بين الشبكات</li><li><strong>NAT:</strong> ترجمة العناوين للإنترنت</li><li><strong>VPN Server:</strong> اتصالات VPN للموظفين عن بعد</li><li><strong>Dial-Up:</strong> اتصالات قديمة (نادرة)</li></ul><h2 class="section-title">تثبيت وإعداد RRAS</h2><pre># تثبيت الـ Role
+Install-WindowsFeature -Name RemoteAccess -IncludeManagementTools
+Install-WindowsFeature -Name RSAT-RemoteAccess-Mgmt
+
+# تفعيل الـ Routing
+Install-RemoteAccess -VpnType RoutingOnly
+
+# تفعيل IP Forwarding
+Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters" -Name "IPEnableRouter" -Value 1</pre><h2 class="section-title">Static Routes فى Windows</h2><pre># إضافة Static Route
+Route Add 10.0.0.0 MASK 255.0.0.0 192.168.1.1
+
+# Route دائمة (بتفضل بعد الـ Restart)
+Route Add 10.0.0.0 MASK 255.0.0.0 192.168.1.1 -P
+
+# عرض جدول الـ Routing
+Route Print
+Get-NetRoute
+
+# حذف Route
+Route Delete 10.0.0.0</pre><h2 class="section-title">NAT على Windows Server</h2><pre># تفعيل NAT عبر RRAS GUI
+1. افتح Routing and Remote Access
+2. IPv4 → NAT
+3. كليك يمين → New Interface
+4. اختار الـ Interface الخارجى (Internet)
+5. فعّل NAT على الـ Public Interface</pre><h2 class="section-title">VPN Server إعداد مبسط</h2><pre># إعداد VPN Server
+Install-RemoteAccess -VpnType VpnS2S
+
+# إضافة VPN User
+Add-VpnUser -UserName "vpnuser" -Password "VPN@Pass123"
+
+# فتح Ports على الـ Firewall
+New-NetFirewallRule -DisplayName "PPTP VPN" -Direction Inbound -Protocol TCP -LocalPort 1723 -Action Allow
+New-NetFirewallRule -DisplayName "L2TP VPN" -Direction Inbound -Protocol UDP -LocalPort 1701 -Action Allow
+New-NetFirewallRule -DisplayName "SSTP VPN" -Direction Inbound -Protocol TCP -LocalPort 443 -Action Allow</pre></div>
+            </div>
+
+    <div class="tab-pane" id="tab-practical">
+                <div class="theory"><h2 class="section-title">التطبيق العملى - Routing</h2><h3>تمرين 1: إعداد RRAS Router</h3><pre># السيرفر بيه Interfaceين:
+# Gi1: 192.168.1.1/24 (LAN)
+# Gi2: 10.0.0.1/30 (WAN للـ Router التانى)
+
+Install-WindowsFeature -Name RemoteAccess, RSAT-RemoteAccess-Mgmt -IncludeManagementTools
+Install-RemoteAccess -VpnType RoutingOnly
+
+# إضافة Static Route
+Add-NetRoute -DestinationPrefix "172.16.0.0/16" -NextHop "10.0.0.2" -InterfaceAlias "Ethernet 2"
+
+# التحقق
+Get-NetRoute | Where-Object {$_.DestinationPrefix -ne "0.0.0.0/0"} | Select DestinationPrefix, NextHop, InterfaceAlias</pre><h3>تمرين 2: NAT للإنترنت</h3><pre># فى Routing and Remote Access (GUI)
+# 1. كليك يمين على IPv4 → NAT
+# 2. New Interface → اختار Gi2 (الإنترنت)
+# 3. Public interface connected to the Internet
+# 4. Enable NAT on this interface
+# 5. Gi1 (LAN) → Private interface connected to private network
+
+# من PowerShell
+$natConfig = Get-NetNatStaticMapping
+Add-NetNat -Name "InternetNAT" -InternalIPInterfaceAddressPrefix "192.168.1.0/24"</pre><h3>تمرين 3: اختبار الـ Routing</h3><pre># من جهاز على LAN (192.168.1.x)
+ping 172.16.1.1          # شبكة بعيدة
+tracert 172.16.1.1       # تتبع المسار
+route print              # عرض جدول الـ Routing</pre></div>
+            </div>
+    </main>
+    <footer class="site-footer">دروس MCSA | Windows Server</footer>
+  </div>
+</body>
+</html>

@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0a0f1d">
+  <title>Domains و Trust Relationships | MCSA</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="../mcsa-theme.css">
+  <script src="../mcsa-interactions.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="site-header">
+      <p class="eyebrow"><i class="fa-brands fa-microsoft" aria-hidden="true"></i> MCSA | Windows Server</p>
+      <h1>Domains و Trust Relationships</h1>
+      <p>شرح نظري وتطبيق عملي لإدارة Windows Server.</p>
+    </header>
+    <a class="back-link" href="../index.html"><i class="fa-solid fa-arrow-right" aria-hidden="true"></i> العودة إلى فهرس الدروس</a>
+    <nav class="tab-nav" role="tablist" aria-label="أقسام الدرس">
+      <button class="tab-button" id="theory-tab" type="button" role="tab" aria-selected="true" aria-controls="tab-theory"><i class="fa-solid fa-book-open" aria-hidden="true"></i> الجزء النظري</button>
+      <button class="tab-button" id="practical-tab" type="button" role="tab" aria-selected="false" aria-controls="tab-practical"><i class="fa-solid fa-server" aria-hidden="true"></i> التطبيق العملي</button>
+    </nav>
+    <main class="lesson-content">
+<div class="tab-pane active" id="tab-theory">
+                <div class="theory"><p>فى الشركات الكبيرة، ممكن يكون فيه أكتر من Domain. الـ Trust Relationships بتخلى المستخدمين فى Domain يوصلوا لـ Resources فى Domain تانى.</p><h2 class="section-title">أنواع الـ Trust</h2><table><tr><th>النوع</th><th>الاتجاه</th><th>الوصف</th></tr><tr><td>Parent-Child Trust</td><td>Two-way Transitive</td><td>بيتنشئ تلقائياً لما تضيف Child Domain</td></tr><tr><td>Tree-Root Trust</td><td>Two-way Transitive</td><td>بين الـ Root Domains فى نفس الـ Forest</td></tr><tr><td>Shortcut Trust</td><td>One أو Two-way Transitive</td><td>بتسرّع المصادقة بين Domains بعيدة</td></tr><tr><td>External Trust</td><td>One أو Two-way Non-transitive</td><td>مع Domain خارج الـ Forest</td></tr><tr><td>Forest Trust</td><td>One أو Two-way Transitive</td><td>بين Forest مختلفة - يعطى وصول لكل الـ Domains</td></tr><tr><td>Realm Trust</td><td>One أو Two-way</td><td>مع Kerberos Realm غير Microsoft (Linux)</td></tr></table><h2 class="section-title">Transitive vs Non-Transitive</h2><ul><li><strong>Transitive:</strong> لو A يثق فى B، وـ B يثق فى C، فـ A يثق فى C تلقائياً</li><li><strong>Non-Transitive:</strong> الثقة محصورة بين الـ Domains المحددة بس</li></ul><h2 class="section-title">إنشاء Trust</h2><pre># إنشاء External Trust (One-way)
+Netdom trust networkat.local /domain:partner.com /add /twoway
+
+# من PowerShell
+Add-ADTrustAccount -TargetDomainName "partner.com" -TrustDirection Bidirectional -TrustType External
+
+# التحقق
+Get-ADTrust -Filter *</pre><h2 class="section-title">Selective Authentication</h2><p>بدل ما يديك وصول لكل الـ Resources فى الـ Forest التانية، بتحدد بالظبط أنهى Users من الـ Domain التانى يقدروا يوصلوا لأنهى Resources:</p><pre># تفعيل Selective Authentication على الـ Trust
+Set-ADTrust -Identity "partner.com" -SelectiveAuth $true
+
+# السماح لـ User بالوصول لـ Resource معين
+$user = Get-ADUser -Identity "ahmed" -Server "partner.com"
+$acl = Get-Acl "\\SRV-File\SharedData"
+$rule = New-Object System.Security.AccessControl.FileSystemAccessRule($user, "Read", "Allow")
+$acl.AddAccessRule($rule)
+Set-Acl "\\SRV-File\SharedData" $acl</pre></div>
+            </div>
+
+    <div class="tab-pane" id="tab-practical">
+                <div class="theory"><h2 class="section-title">التطبيق العملى - Domains و Trusts</h2><h3>تمرين 1: إنشاء Child Domain</h3><pre># على سيرفر جديد عايز يبقى DC لـ cairo.networkat.local
+Install-WindowsFeature -Name AD-Domain-Services -IncludeManagementTools
+
+Install-ADDSDomain `
+    -NewDomainName "cairo" `
+    -ParentDomainName "networkat.local" `
+    -NewDomainNetbiosName "CAIRO" `
+    -InstallDns:$true `
+    -SafeModeAdministratorPassword (ConvertTo-SecureString "DSRM@Pass123" -AsPlainText -Force) `
+    -Credential (Get-Credential "NETWORKAT\Administrator") `
+    -Force:$true
+
+# بعد الـ Restart، التحقق من الـ Trust
+Get-ADTrust -Filter * -Server "networkat.local"</pre><h3>تمرين 2: إنشاء External Trust</h3><pre># بين networkat.local وـ partner.com
+# على SRV-DC01 فى networkat.local:
+Netdom trust networkat.local /domain:partner.com /add /twoway /usero:Administrator /passwordo:PartnerPass123
+
+# التحقق
+Netdom query trust
+
+# التحقق من PowerShell
+Get-ADTrust -Filter * | Select Name, Direction, TrustType, IsTransitive</pre><h3>تمرين 3: الوصول عبر Trust</h3><pre># من جهاز فى networkat.local
+# الوصول لـ Resource فى partner.com
+net use Z: \\SRV-Partner\SharedData /user:partner.com\ahmed PartnerPass
+
+# أو فى الـ AD Users and Computers
+# بتقدر تضيف User من partner.com لـ Group فى networkat.local
+Add-ADGroupMember -Identity "DL_Shared_Read" -Members "partner.com\ahmed"</pre></div>
+            </div>
+
+    </main>
+    <footer class="site-footer">دروس MCSA | Windows Server</footer>
+  </div>
+</body>
+</html>

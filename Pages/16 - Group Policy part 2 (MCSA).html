@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0a0f1d">
+  <title>Group Policy - الجزء الثانى | MCSA</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="../mcsa-theme.css">
+  <script src="../mcsa-interactions.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="site-header">
+      <p class="eyebrow"><i class="fa-brands fa-microsoft" aria-hidden="true"></i> MCSA | Windows Server</p>
+      <h1>Group Policy - الجزء الثانى</h1>
+      <p>شرح نظري وتطبيق عملي لإدارة Windows Server.</p>
+    </header>
+    <a class="back-link" href="../index.html"><i class="fa-solid fa-arrow-right" aria-hidden="true"></i> العودة إلى فهرس الدروس</a>
+    <nav class="tab-nav" role="tablist" aria-label="أقسام الدرس">
+      <button class="tab-button" id="theory-tab" type="button" role="tab" aria-selected="true" aria-controls="tab-theory"><i class="fa-solid fa-book-open" aria-hidden="true"></i> الجزء النظري</button>
+      <button class="tab-button" id="practical-tab" type="button" role="tab" aria-selected="false" aria-controls="tab-practical"><i class="fa-solid fa-server" aria-hidden="true"></i> التطبيق العملي</button>
+    </nav>
+    <main class="lesson-content">
+<div class="tab-pane active" id="tab-theory">
+                <div class="theory"><h2 class="section-title">GPO Filtering - التحكم فى من يطبّق الـ GPO</h2><p>مش كل الـ GPO لازم يطبّق على كل الأجهزة والمستخدمين. فيه طريقتين للتحكم:</p><h3>Security Filtering</h3><p>بتحدد مين يستقبل الـ GPO - Users أو Groups أو Computers:</p><pre># إزالة Authenticated Users الافتراضى
+Set-GPPermissions -Name "IT_Policy" -TargetName "Authenticated Users" -TargetType Group -PermissionLevel None
+
+# إضافة Group معين
+Set-GPPermissions -Name "IT_Policy" -TargetName "GG_IT_Staff" -TargetType Group -PermissionLevel GpoApply</pre><h3>WMI Filtering</h3><p>بتطبّق الـ GPO بناءً على خصائص الجهاز (نوع الـ Windows، مقدار الـ RAM، إلخ):</p><pre># WMI Filter - يطبّق فقط على Windows 10
+New-GPWmiFilter -Name "Win10_Only" -Expression "SELECT * FROM Win32_OperatingSystem WHERE Version LIKE "10.0%"" -Domain "networkat.local"</pre><h2 class="section-title">GPO Inheritance</h2><p>الـ GPOs بتنتقل من الـ Parent للـ Child OUs. ممكن تتحكم فى الـ Inheritance:</p><ul><li><strong>Block Inheritance:</strong> يمنع الـ GPOs من الـ Parent من الوصول للـ OU ده</li><li><strong>Enforced (No Override):</strong> يجبر الـ GPO يطبّق حتى لو الـ Child عمل Block</li></ul><pre># Block Inheritance على OU
+Set-GPInheritance -Target "OU=Special,DC=networkat,DC=local" -IsBlocked Yes
+
+# Enforce GPO
+$link = Get-GPLink -Name "Domain_Security" -Target "DC=networkat,DC=local"
+Set-GPLink -Guid $link.GpoId -Target "DC=networkat,DC=local" -Enforced Yes</pre><h2 class="section-title">Group Policy Preferences</h2><p>الـ Preferences أقوى من الـ Policies فى بعض الجوانب - بتدّى المستخدم حرية تغيير الإعداد بعد تطبيقه:</p><ul><li>Drive Maps: تعيين Network Drives تلقائياً</li><li>Printers: إضافة طابعات</li><li>Registry: تعديل الـ Registry</li><li>Files/Folders: إنشاء وتوزيع ملفات</li><li>Environment Variables: متغيرات البيئة</li></ul><pre># Drive Mapping عبر GPO Preferences
+# User Configuration → Preferences → Windows Settings → Drive Maps
+# New → Mapped Drive
+# Action: Create
+# Location: \\SRV-File\HR$
+# Drive Letter: H
+# Label: HR Department Data</pre></div>
+            </div>
+
+    <div class="tab-pane" id="tab-practical">
+                <div class="theory"><h2 class="section-title">التطبيق العملى - Group Policy الجزء الثانى</h2><h3>تمرين 1: GPO للأمان</h3><pre># إنشاء Security GPO
+New-GPO -Name "Workstation_Security"
+
+# تطبيق إعدادات أمان
+# من الـ GUI: Computer Configuration → Windows Settings → Security Settings
+
+# إعدادات مهمة:
+# 1. Account Lockout: 5 محاولات → Lock 30 دقيقة
+# 2. Audit Policy: تسجيل كل Logon Success/Failure
+# 3. User Rights: منع تسجيل الدخول محلياً للـ Guests
+# 4. Security Options: تعطيل Anonymous Access
+
+# ربط بالـ Domain
+New-GPLink -Name "Workstation_Security" -Target "DC=networkat,DC=local"</pre><h3>تمرين 2: Drive Mapping بـ GPO Preferences</h3><pre># إنشاء GPO للـ Drive Mapping
+New-GPO -Name "Drive_Mapping"
+New-GPLink -Name "Drive_Mapping" -Target "DC=networkat,DC=local"
+
+# من الـ GUI:
+# User Config → Preferences → Windows Settings → Drive Maps
+# Map H: → \\SRV-File\HR$ (للـ HR Group فقط)
+# Map I: → \\SRV-File\IT$ (للـ IT Group فقط)
+# استخدم Item-Level Targeting لتطبيق على Groups معينة</pre><h3>تمرين 3: Troubleshooting GPO</h3><pre># التحقق من الـ GPOs المطبقة
+gpresult /r /scope computer
+gpresult /r /scope user
+
+# تقرير HTML تفصيلى
+gpresult /h "C:\GPReport.html"
+
+# تحديث الـ GPO فوراً
+gpupdate /force /boot /logoff
+
+# التحقق من الـ SYSVOL
+ls \\networkat.local\SYSVOL\networkat.local\Policies</pre></div>
+            </div>
+
+    </main>
+    <footer class="site-footer">دروس MCSA | Windows Server</footer>
+  </div>
+</body>
+</html>

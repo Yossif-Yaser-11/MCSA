@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0a0f1d">
+  <title>User Groups فى Active Directory | MCSA</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="../mcsa-theme.css">
+  <script src="../mcsa-interactions.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="site-header">
+      <p class="eyebrow"><i class="fa-brands fa-microsoft" aria-hidden="true"></i> MCSA | Windows Server</p>
+      <h1>User Groups فى Active Directory</h1>
+      <p>شرح نظري وتطبيق عملي لإدارة Windows Server.</p>
+    </header>
+    <a class="back-link" href="../index.html"><i class="fa-solid fa-arrow-right" aria-hidden="true"></i> العودة إلى فهرس الدروس</a>
+    <nav class="tab-nav" role="tablist" aria-label="أقسام الدرس">
+      <button class="tab-button" id="theory-tab" type="button" role="tab" aria-selected="true" aria-controls="tab-theory"><i class="fa-solid fa-book-open" aria-hidden="true"></i> الجزء النظري</button>
+      <button class="tab-button" id="practical-tab" type="button" role="tab" aria-selected="false" aria-controls="tab-practical"><i class="fa-solid fa-server" aria-hidden="true"></i> التطبيق العملي</button>
+    </nav>
+    <main class="lesson-content">
+<div class="tab-pane active" id="tab-theory">
+    <div class="theory">
+        
+        <p>الـ Groups بتساعدك تدير الصلاحيات بكفاءة. بدل ما تدى كل User صلاحية لوحده، بتحطهم فى Group وبتدى الـ Group الصلاحية.</p>
+        
+        <h2 class="section-title">أنواع الـ Groups</h2>
+        <h3>من حيث النوع (Group Type)</h3>
+        <ul>
+            <li><strong>Security Groups:</strong> بتستخدم للصلاحيات والـ Permissions - الأكثر شيوعاً</li>
+            <li><strong>Distribution Groups:</strong> بتستخدم للبريد الإلكترونى (Mailing Lists) - مش ليها صلاحيات</li>
+        </ul>
+        
+        <h3>من حيث النطاق (Group Scope)</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>النطاق</th>
+                    <th>الأعضاء</th>
+                    <th>الاستخدام</th>
+                    <th>الـ AGDLP</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Global</td>
+                    <td>Users من نفس الـ Domain</td>
+                    <td>تجميع Users بنفس الوظيفة</td>
+                    <td>G</td>
+                </tr>
+                <tr>
+                    <td>Domain Local</td>
+                    <td>Users وـ Groups من أى Domain</td>
+                    <td>تحديد الصلاحيات على Resources</td>
+                    <td>DL</td>
+                </tr>
+                <tr>
+                    <td>Universal</td>
+                    <td>Users وـ Groups من أى Domain فى الـ Forest</td>
+                    <td>الشبكات الكبيرة متعددة الـ Domains</td>
+                    <td>U</td>
+                </tr>
+            </tbody>
+        </table>
+        
+        <h2 class="section-title">AGDLP - Best Practice</h2>
+        <p>الـ AGDLP هى أفضل ممارسة لإدارة الصلاحيات:</p>
+        <ul>
+            <li><strong>A:</strong> Accounts (المستخدمين)</li>
+            <li><strong>G:</strong> Global Groups (تجميع المستخدمين)</li>
+            <li><strong>DL:</strong> Domain Local Groups (تحديد الصلاحية)</li>
+            <li><strong>P:</strong> Permissions (الصلاحية الفعلية)</li>
+        </ul>
+        <pre>مثال:
+- Users (A): Ahmed, Sara, Mohamed (كلهم فى IT)
+- Global Group (G): GG_IT_Staff (بيضم Users الـ IT)
+- Domain Local (DL): DL_Shared_ReadWrite (صلاحية Read/Write على الـ Shared Folder)
+- Permission (P): Read/Write على مجلد الـ Shared
+
+الخطوات:
+1. حط Ahmed, Sara, Mohamed فى GG_IT_Staff
+2. حط GG_IT_Staff فى DL_Shared_ReadWrite
+3. دّى DL_Shared_ReadWrite صلاحية Read/Write على المجلد</pre>
+        
+        <h2 class="section-title">إنشاء وإدارة Groups</h2>
+        <pre># إنشاء Group
+New-ADGroup -Name "GG_IT_Staff" -GroupScope Global -GroupCategory Security -Path "OU=Groups,DC=networkat,DC=local"
+
+# إضافة Members
+Add-ADGroupMember -Identity "GG_IT_Staff" -Members "ahmed.ali","fatima.hassan"
+
+# عرض Members
+Get-ADGroupMember -Identity "GG_IT_Staff" | Select Name
+
+# إزالة Member
+Remove-ADGroupMember -Identity "GG_IT_Staff" -Members "ahmed.ali" -Confirm:$false
+
+# إضافة Group لـ Group
+Add-ADGroupMember -Identity "DL_Shared_ReadWrite" -Members "GG_IT_Staff"</pre>
+    </div>
+</div>
+
+<div class="tab-pane" id="tab-practical">
+    <div class="theory">
+        <h2 class="section-title">التطبيق العملى - Groups</h2>
+        <h3>تمرين 1: AGDLP كامل</h3>
+        <pre># الـ Global Groups (حسب الوظيفة)
+New-ADGroup -Name "GG_IT_Staff" -GroupScope Global -GroupCategory Security -Path "OU=Groups,DC=networkat,DC=local"
+New-ADGroup -Name "GG_HR_Staff" -GroupScope Global -GroupCategory Security -Path "OU=Groups,DC=networkat,DC=local"
+New-ADGroup -Name "GG_Managers" -GroupScope Global -GroupCategory Security -Path "OU=Groups,DC=networkat,DC=local"
+
+# الـ Domain Local Groups (حسب الـ Resource)
+New-ADGroup -Name "DL_IT_Share_RW" -GroupScope DomainLocal -GroupCategory Security -Path "OU=Groups,DC=networkat,DC=local"
+New-ADGroup -Name "DL_HR_Share_RW" -GroupScope DomainLocal -GroupCategory Security -Path "OU=Groups,DC=networkat,DC=local"
+New-ADGroup -Name "DL_Shared_Read" -GroupScope DomainLocal -GroupCategory Security -Path "OU=Groups,DC=networkat,DC=local"
+
+# إضافة Users للـ Global Groups
+Add-ADGroupMember -Identity "GG_IT_Staff" -Members "ahmed.ali","fatima.hassan"
+Add-ADGroupMember -Identity "GG_HR_Staff" -Members "sara.omar","omar.ibrahim"
+
+# إضافة Global Groups للـ Domain Local Groups
+Add-ADGroupMember -Identity "DL_IT_Share_RW" -Members "GG_IT_Staff"
+Add-ADGroupMember -Identity "DL_HR_Share_RW" -Members "GG_HR_Staff"
+Add-ADGroupMember -Identity "DL_Shared_Read" -Members "GG_IT_Staff","GG_HR_Staff"</pre>
+        
+        <h3>تمرين 2: التحقق</h3>
+        <pre># عرض Members
+Get-ADGroupMember -Identity "GG_IT_Staff" -Recursive | Select Name, ObjectClass
+
+# عرض الـ Groups اللى User فيها
+(Get-ADUser -Identity "ahmed.ali" -Properties MemberOf).MemberOf
+
+# عرض Groups متداخلة
+Get-ADGroupMember -Identity "DL_IT_Share_RW" | Select Name, ObjectClass</pre>
+    </div>
+</div>
+    </main>
+    <footer class="site-footer">دروس MCSA | Windows Server</footer>
+  </div>
+</body>
+</html>

@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0a0f1d">
+  <title>Disk Quota - تحديد حصة المستخدمين | MCSA</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="../mcsa-theme.css">
+  <script src="../mcsa-interactions.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="site-header">
+      <p class="eyebrow"><i class="fa-brands fa-microsoft" aria-hidden="true"></i> MCSA | Windows Server</p>
+      <h1>Disk Quota - تحديد حصة المستخدمين</h1>
+      <p>شرح نظري وتطبيق عملي لإدارة Windows Server.</p>
+    </header>
+    <a class="back-link" href="../index.html"><i class="fa-solid fa-arrow-right" aria-hidden="true"></i> العودة إلى فهرس الدروس</a>
+    <nav class="tab-nav" role="tablist" aria-label="أقسام الدرس">
+      <button class="tab-button" id="theory-tab" type="button" role="tab" aria-selected="true" aria-controls="tab-theory"><i class="fa-solid fa-book-open" aria-hidden="true"></i> الجزء النظري</button>
+      <button class="tab-button" id="practical-tab" type="button" role="tab" aria-selected="false" aria-controls="tab-practical"><i class="fa-solid fa-server" aria-hidden="true"></i> التطبيق العملي</button>
+    </nav>
+    <main class="lesson-content">
+<div class="tab-pane active" id="tab-theory">
+                <div class="theory"><p>الـ Disk Quota بيخليك تتحكم فى حجم المساحة اللى كل مستخدم يقدر يستخدمها على السيرفر. بيمنع مستخدم واحد من ملء القرص كله.</p><h2 class="section-title">أنواع الـ Quota</h2><table><tr><th>النوع</th><th>الوصف</th></tr><tr><td>Volume Quota</td><td>بيطبّق على كل الـ Volume - الكلاسيكى</td></tr><tr><td>FSRM Quota</td><td>File Server Resource Manager - أكثر مرونة وتحكماً</td></tr></table><h2 class="section-title">إعداد Volume Quota</h2><pre># من الـ GUI
+1. افتح My Computer
+2. كليك يمين على الـ Drive → Properties
+3. تاب Quota → Enable Quota Management
+4. حدد الـ Default Limit
+5. حدد الـ Warning Level
+
+# من PowerShell (لازم FSRM مثبت)
+Install-WindowsFeature -Name FS-Resource-Manager -IncludeManagementTools</pre><h2 class="section-title">FSRM Quota - الأقوى والأمثل</h2><pre># إنشاء Quota Template
+New-FsrmQuotaTemplate -Name "5GB User Quota" `
+    -Size 5GB `
+    -SoftLimit $false `
+    -Threshold @(
+        New-FsrmQuotaThreshold -Percentage 80 -Action @(
+            New-FsrmAction Email -MailTo "[Admin Email]" -Subject "Quota Warning" -Body "User [Quota Path Owner] reached 80% of quota on [Quota Path]"
+        ),
+        New-FsrmQuotaThreshold -Percentage 100
+    )
+
+# تطبيق الـ Quota على مجلد
+New-FsrmQuota -Path "D:\Users\ahmed" -Template "5GB User Quota"
+
+# تطبيق تلقائى على مجلدات المستخدمين
+New-FsrmAutoQuota -Path "D:\Users" -Template "5GB User Quota" -Enabled $true</pre><h2 class="section-title">File Screening - منع أنواع ملفات معينة</h2><pre># منع رفع ملفات الـ Media
+New-FsrmFileScreenTemplate -Name "Block Audio Video" `
+    -IncludeGroup @("Audio and Video Files") `
+    -Active $true
+
+New-FsrmFileScreen -Path "D:\Company_Data" -Template "Block Audio Video"
+
+# عرض الـ Quotas الحالية
+Get-FsrmQuota -Path "D:\Users" | Select Path, Size, Usage, PeakUsage</pre></div>
+            </div>
+
+    <div class="tab-pane" id="tab-practical">
+                <div class="theory"><h2 class="section-title">التطبيق العملى - Disk Quota</h2><h3>تمرين 1: تثبيت وإعداد FSRM</h3><pre>Install-WindowsFeature -Name FS-Resource-Manager -IncludeManagementTools
+
+# إعداد SMTP للإشعارات
+Set-FsrmSetting -SmtpServer "mail.networkat.local" -AdminEmailAddress "admin@networkat.local" -FromEmailAddress "server@networkat.local"</pre><h3>تمرين 2: Quota لكل المستخدمين</h3><pre># إنشاء Templates مختلفة
+New-FsrmQuotaTemplate -Name "Standard User 5GB" -Size 5GB -SoftLimit $false
+New-FsrmQuotaTemplate -Name "Power User 20GB" -Size 20GB -SoftLimit $false
+New-FsrmQuotaTemplate -Name "Warning Only 10GB" -Size 10GB -SoftLimit $true
+
+# تطبيق تلقائى
+New-FsrmAutoQuota -Path "D:\Users" -Template "Standard User 5GB" -Enabled $true
+
+# تطبيق Quota مخصص على User معين
+New-FsrmQuota -Path "D:\Users\Manager" -Template "Power User 20GB"
+
+# التحقق
+Get-FsrmQuota | Select Path, @{N="Size(GB)";E={$_.Size/1GB}}, @{N="Usage(GB)";E={[math]::Round($_.Usage/1GB,2)}}</pre><h3>تمرين 3: File Screening</h3><pre># منع الـ Executables والـ Media فى مجلد الشركة
+New-FsrmFileScreenTemplate -Name "Company Policy" -IncludeGroup @("Executable Files","Audio and Video Files") -Active $true
+New-FsrmFileScreen -Path "D:\Company_Data" -Template "Company Policy"
+
+# مشاهدة تقارير الـ Storage
+Start-FsrmStorageReport -Name "User Quota Report" -Path "D:\Users" -ReportType QuotaUsage</pre></div>
+            </div>
+    </main>
+    <footer class="site-footer">دروس MCSA | Windows Server</footer>
+  </div>
+</body>
+</html>

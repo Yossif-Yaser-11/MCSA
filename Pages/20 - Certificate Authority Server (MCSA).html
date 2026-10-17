@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0a0f1d">
+  <title>Certificate Authority Server | MCSA</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="../mcsa-theme.css">
+  <script src="../mcsa-interactions.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="site-header">
+      <p class="eyebrow"><i class="fa-brands fa-microsoft" aria-hidden="true"></i> MCSA | Windows Server</p>
+      <h1>Certificate Authority Server</h1>
+      <p>شرح نظري وتطبيق عملي لإدارة Windows Server.</p>
+    </header>
+    <a class="back-link" href="../index.html"><i class="fa-solid fa-arrow-right" aria-hidden="true"></i> العودة إلى فهرس الدروس</a>
+    <nav class="tab-nav" role="tablist" aria-label="أقسام الدرس">
+      <button class="tab-button" id="theory-tab" type="button" role="tab" aria-selected="true" aria-controls="tab-theory"><i class="fa-solid fa-book-open" aria-hidden="true"></i> الجزء النظري</button>
+      <button class="tab-button" id="practical-tab" type="button" role="tab" aria-selected="false" aria-controls="tab-practical"><i class="fa-solid fa-server" aria-hidden="true"></i> التطبيق العملي</button>
+    </nav>
+    <main class="lesson-content">
+ <div class="tab-pane active" id="tab-theory">
+                <div class="theory"><p>الـ Certificate Authority (CA) هو الجهة الموثوقة اللى بتصدر الشهادات الرقمية. الشهادات بتستخدم لتشفير الاتصالات والتحقق من الهوية.</p><h2 class="section-title">استخدامات الشهادات الرقمية</h2><ul><li><strong>HTTPS:</strong> تشفير مواقع الويب</li><li><strong>Email Encryption:</strong> تشفير البريد الإلكترونى (S/MIME)</li><li><strong>VPN:</strong> المصادقة فى اتصالات VPN</li><li><strong>Smart Card:</strong> تسجيل الدخول بالبطاقة الذكية</li><li><strong>Code Signing:</strong> التحقق من مصدر البرامج</li><li><strong>Network Authentication:</strong> 802.1X للـ Wi-Fi والشبكات السلكية</li></ul><h2 class="section-title">أنواع الـ CA</h2><table><tr><th>النوع</th><th>الوصف</th></tr><tr><td>Enterprise Root CA</td><td>أعلى مستوى - مثبّت على Domain - للشركات</td></tr><tr><td>Enterprise Subordinate CA</td><td>تحت الـ Root CA - يصدر الشهادات للمستخدمين</td></tr><tr><td>Standalone Root CA</td><td>مستقل عن الـ Domain - للـ Labs</td></tr><tr><td>Standalone Subordinate CA</td><td>تحت الـ Root ولكن مستقل</td></tr></table><h2 class="section-title">التثبيت والإعداد</h2><pre># تثبيت AD CS
+Install-WindowsFeature -Name AD-Certificate -IncludeManagementTools
+
+# إعداد Enterprise Root CA
+Install-AdcsCertificationAuthority `
+    -CAType EnterpriseRootCa `
+    -CACommonName "Networkat-Root-CA" `
+    -KeyLength 4096 `
+    -HashAlgorithmName SHA256 `
+    -ValidityPeriod Years `
+    -ValidityPeriodUnits 10 `
+    -Force</pre><h2 class="section-title">إصدار الشهادات</h2><pre># إنشاء Certificate Template (من الـ GUI)
+# certsrv.msc → Certificate Templates → Manage
+# Duplicate Template → تعديل الإعدادات → Publish
+
+# طلب شهادة يدوياً
+# certmgr.msc → Personal → Certificates → Request New Certificate
+
+# Autoenrollment (تلقائى)
+# GPO → Computer Config → Security Settings → Public Key Policies → Certificate Services Client
+# Enrollment Policy: Enabled
+# Automatic Certificate Management: Enabled</pre><h2 class="section-title">إدارة الشهادات</h2><pre># عرض الشهادات
+Get-ChildItem Cert:\LocalMachine\My
+Get-ChildItem Cert:\CurrentUser\My
+
+# إصدار شهادة للـ Web Server
+$cert = New-SelfSignedCertificate -DnsName "www.networkat.local" -CertStoreLocation Cert:\LocalMachine\My
+
+# إلغاء شهادة
+Revoke-CACertificate -SerialNumber "1234567890" -Reason CessationOfOperation</pre></div>
+            </div>
+
+    <div class="tab-pane" id="tab-practical">
+                <div class="theory"><h2 class="section-title">التطبيق العملى - Certificate Authority</h2><h3>تمرين 1: تثبيت CA كامل</h3><pre># تثبيت الـ Role
+Install-WindowsFeature -Name AD-Certificate, ADCS-Web-Enrollment -IncludeManagementTools
+
+# إعداد Enterprise Root CA
+Install-AdcsCertificationAuthority `
+    -CAType EnterpriseRootCa `
+    -CACommonName "Networkat-Root-CA" `
+    -CADistinguishedNameSuffix "DC=networkat,DC=local" `
+    -KeyLength 4096 `
+    -HashAlgorithmName SHA256 `
+    -ValidityPeriod Years `
+    -ValidityPeriodUnits 10 `
+    -Force
+
+# إعداد Web Enrollment
+Install-AdcsWebEnrollment -Force
+
+# التحقق
+Get-CACertificate
+certutil -ping</pre><h3>تمرين 2: إصدار شهادة للـ Web Server</h3><pre># طلب شهادة للـ IIS
+$cert = Get-Certificate -Template WebServer -SubjectName "CN=www.networkat.local" -CertStoreLocation Cert:\LocalMachine\My
+
+# ربط الشهادة بـ IIS
+Import-Module WebAdministration
+New-WebBinding -Name "Default Web Site" -Protocol https -Port 443
+$binding = Get-WebBinding -Name "Default Web Site" -Protocol https
+$binding.AddSslCertificate($cert.Certificate.Thumbprint, "My")
+
+# التحقق
+Get-WebBinding -Name "Default Web Site"</pre><h3>تمرين 3: Certificate Autoenrollment عبر GPO</h3><pre># من Group Policy Management
+# Computer Config → Windows Settings → Security Settings → Public Key Policies
+# Certificate Services Client - Auto-Enrollment Settings
+# Configuration Model: Enabled
+# Renew expired certificates: Checked
+# Update certificates: Checked
+
+# التحقق
+gpupdate /force
+certutil -pulse</pre></div>
+            </div>
+    </main>
+    <footer class="site-footer">دروس MCSA | Windows Server</footer>
+  </div>
+</body>
+</html>

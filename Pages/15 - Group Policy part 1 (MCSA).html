@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0a0f1d">
+  <title>Group Policy - الجزء الأول | MCSA</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="../mcsa-theme.css">
+  <script src="../mcsa-interactions.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="site-header">
+      <p class="eyebrow"><i class="fa-brands fa-microsoft" aria-hidden="true"></i> MCSA | Windows Server</p>
+      <h1>Group Policy - الجزء الأول</h1>
+      <p>شرح نظري وتطبيق عملي لإدارة Windows Server.</p>
+    </header>
+    <a class="back-link" href="../index.html"><i class="fa-solid fa-arrow-right" aria-hidden="true"></i> العودة إلى فهرس الدروس</a>
+    <nav class="tab-nav" role="tablist" aria-label="أقسام الدرس">
+      <button class="tab-button" id="theory-tab" type="button" role="tab" aria-selected="true" aria-controls="tab-theory"><i class="fa-solid fa-book-open" aria-hidden="true"></i> الجزء النظري</button>
+      <button class="tab-button" id="practical-tab" type="button" role="tab" aria-selected="false" aria-controls="tab-practical"><i class="fa-solid fa-server" aria-hidden="true"></i> التطبيق العملي</button>
+    </nav>
+    <main class="lesson-content">
+<div class="tab-pane active" id="tab-theory">
+                <div class="theory"><p>الـ Group Policy هى من أقوى أدوات إدارة Windows Server. بتخليك تطبّق إعدادات موحدة على آلاف الأجهزة والمستخدمين من مكان واحد.</p><h2 class="section-title">ما الذى يمكن إدارته بالـ Group Policy؟</h2><ul><li>إعدادات الأمان (Password Policy, Lockout, Firewall)</li><li>تثبيت وتوزيع البرامج تلقائياً</li><li>إعدادات الـ Desktop وـ Start Menu</li><li>تقييد الوصول لبعض البرامج أو الإعدادات</li><li>تعيين الـ Drive Mapping تلقائياً</li><li>إعدادات الـ Internet Explorer / Edge</li><li>Scripts تشتغل عند الـ Logon / Logoff / Startup / Shutdown</li></ul><h2 class="section-title">بنية الـ Group Policy</h2><ul><li><strong>GPO (Group Policy Object):</strong> الوعاء اللى فيه الإعدادات</li><li><strong>GPMC (Group Policy Management Console):</strong> الأداة لإدارة الـ GPOs</li><li><strong>GPO Link:</strong> ربط الـ GPO بـ Site أو Domain أو OU</li></ul><h2 class="section-title">ترتيب تطبيق الـ Group Policy (LSDOU)</h2><ol><li><strong>L - Local:</strong> الـ GPO المحلى على الجهاز نفسه</li><li><strong>S - Site:</strong> الـ GPO المربوط بالـ AD Site</li><li><strong>D - Domain:</strong> الـ GPO المربوط بالـ Domain</li><li><strong>OU:</strong> الـ GPO المربوط بالـ OU (الأحدث يغلب)</li></ol><p>الـ GPO الأخير اللى بيتطبق هو اللى بيأثر فعلياً. يعنى الـ OU GPO بيغلب الـ Domain GPO.</p><h2 class="section-title">إنشاء وإدارة GPO</h2><pre># إنشاء GPO جديد
+New-GPO -Name "Security_Policy" -Domain "networkat.local"
+
+# ربط الـ GPO بـ OU
+New-GPLink -Name "Security_Policy" -Target "OU=IT_Department,DC=networkat,DC=local"
+
+# تطبيق إعداد معين
+Set-GPRegistryValue -Name "Security_Policy" -Key "HKLM\Software\Policies" -ValueName "Setting" -Type DWORD -Value 1
+
+# تفعيل/تعطيل GPO
+Set-GPLink -Name "Security_Policy" -Target "OU=IT_Department,DC=networkat,DC=local" -LinkEnabled Yes</pre><h2 class="section-title">أوامر مهمة</h2><pre># تحديث الـ Group Policy على الجهاز
+gpupdate /force
+
+# عرض الـ GPOs المطبقة على الجهاز الحالى
+gpresult /r
+
+# عرض تقرير تفصيلى
+gpresult /h "C:\GPReport.html" && start "C:\GPReport.html"</pre></div>
+            </div>
+
+    <div class="tab-pane" id="tab-practical">
+                <div class="theory"><h2 class="section-title">التطبيق العملى - Group Policy الجزء الأول</h2><h3>تمرين 1: Password Policy</h3><pre># Password Policy على الـ Default Domain Policy
+$gpo = Get-GPO -Name "Default Domain Policy"
+Set-GPRegistryValue -Guid $gpo.Id -Key "HKLM\SYSTEM\CurrentControlSet\Services\Netlogon\Parameters" -ValueName "MaximumPasswordAge" -Type DWORD -Value 90
+
+# أو من الـ GUI
+# 1. افتح Group Policy Management
+# 2. Forests → Domains → networkat.local → Default Domain Policy
+# 3. Edit → Computer Configuration → Windows Settings → Security Settings → Account Policies → Password Policy
+# 4. عدّل الإعدادات</pre><h3>تمرين 2: تثبيت برنامج تلقائياً</h3><pre># إنشاء GPO لتوزيع برنامج
+New-GPO -Name "Deploy_Chrome"
+
+# مشاركة مجلد الـ Software
+New-SmbShare -Name "Software" -Path "D:\Software" -ReadAccess "Domain Computers"
+
+# نسخ الـ MSI للمجلد
+Copy-Item "C:\GoogleChrome.msi" "D:\Software\"
+
+# من الـ GUI:
+# Computer Configuration → Software Settings → Software Installation
+# New → Package → \\SRV-DC01\Software\GoogleChrome.msi → Assigned</pre><h3>تمرين 3: Logon Script</h3><pre># إنشاء Script
+$script = @"
+net use H: \\SRV-File\HR$ /persistent:yes
+nets use I: \\SRV-File\IT$ /persistent:yes
+"@
+$script | Out-File "\\networkat.local\SYSVOL\networkat.local\Policies\Scripts\logon.bat"
+
+# ربطه بـ GPO
+# User Configuration → Windows Settings → Scripts → Logon → Add</pre></div>
+            </div>
+
+    </main>
+    <footer class="site-footer">دروس MCSA | Windows Server</footer>
+  </div>
+</body>
+</html>

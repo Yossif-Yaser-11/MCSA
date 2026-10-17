@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0a0f1d">
+  <title>Failover Clustering - التوافر العالى | MCSA</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="../mcsa-theme.css">
+  <script src="../mcsa-interactions.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="site-header">
+      <p class="eyebrow"><i class="fa-brands fa-microsoft" aria-hidden="true"></i> MCSA | Windows Server</p>
+      <h1>Failover Clustering - التوافر العالى</h1>
+      <p>شرح نظري وتطبيق عملي لإدارة Windows Server.</p>
+    </header>
+    <a class="back-link" href="../index.html"><i class="fa-solid fa-arrow-right" aria-hidden="true"></i> العودة إلى فهرس الدروس</a>
+    <nav class="tab-nav" role="tablist" aria-label="أقسام الدرس">
+      <button class="tab-button" id="theory-tab" type="button" role="tab" aria-selected="true" aria-controls="tab-theory"><i class="fa-solid fa-book-open" aria-hidden="true"></i> الجزء النظري</button>
+      <button class="tab-button" id="practical-tab" type="button" role="tab" aria-selected="false" aria-controls="tab-practical"><i class="fa-solid fa-server" aria-hidden="true"></i> التطبيق العملي</button>
+    </nav>
+    <main class="lesson-content">
+<div class="tab-pane active" id="tab-theory">
+                <div class="theory"><p>الـ Failover Clustering بيخليك تشغّل خدمة على أكتر من سيرفر. لو سيرفر وقع، الخدمة بتنتقل تلقائياً للسيرفر التانى من غير انقطاع يذكر.</p><h2 class="section-title">مكونات الـ Cluster</h2><ul><li><strong>Cluster Nodes:</strong> السيرفرات اللى بتكوّن الـ Cluster (الحد الأدنى 2)</li><li><strong>Shared Storage:</strong> تخزين مشترك بين الـ Nodes (SAN أو iSCSI)</li><li><strong>Cluster Name:</strong> اسم افتراضى للـ Cluster</li><li><strong>Cluster IP:</strong> عنوان IP افتراضى</li><li><strong>Witness:</strong> جهة ثالثة للتصويت عند الخلاف</li></ul><h2 class="section-title">Quorum</h2><p>الـ Quorum هو الحد الأدنى من الـ Nodes اللى لازم تكون شغّالة عشان الـ Cluster يشتغل. بيمنع الـ Split-Brain (كل Node تفتكر إنها المسؤولة).</p><ul><li><strong>Node Majority:</strong> أكتر من نص الـ Nodes لازم يكونوا شغّالين</li><li><strong>Node + Disk Witness:</strong> بيستخدم قرص مشترك كـ Tiebreaker</li><li><strong>Node + File Share Witness:</strong> بيستخدم Shared Folder كـ Tiebreaker</li><li><strong>Cloud Witness:</strong> Azure Blob Storage كـ Witness</li></ul><h2 class="section-title">تثبيت وإعداد Failover Cluster</h2><pre># تثبيت الـ Feature على كل الـ Nodes
+Install-WindowsFeature -Name Failover-Clustering -IncludeManagementTools
+
+# اختبار ما قبل الإنشاء
+Test-Cluster -Node "SRV-NODE1","SRV-NODE2" -Include "Storage","Network"
+
+# إنشاء الـ Cluster
+New-Cluster -Name "CLUSTER-01" -Node "SRV-NODE1","SRV-NODE2" -StaticAddress "192.168.1.100"
+
+# إعداد الـ Witness
+Set-ClusterQuorum -Cluster "CLUSTER-01" -FileShareWitness "\\SRV-DC01\ClusterWitness"</pre><h2 class="section-title">Cluster Roles</h2><pre># إضافة Role على الـ Cluster
+# Cluster Manager → Configure Role → File Server, SQL, Hyper-V, etc.
+
+# Hyper-V على Cluster (Live Migration)
+# الـ VMs تقدر تنتقل بين الـ Nodes بدون انقطاع
+Move-VM -Name "VM-Exchange" -DestinationHost "SRV-NODE2" -IncludeStorage -DestinationStoragePath "D:\VMs"</pre></div>
+            </div>
+
+    <div class="tab-pane" id="tab-practical">
+                <div class="theory"><h2 class="section-title">التطبيق العملى - Failover Clustering</h2><h3>تمرين 1: إعداد 2-Node Cluster</h3><pre># على كلا الـ Nodes:
+Install-WindowsFeature -Name Failover-Clustering -IncludeManagementTools
+
+# إضافة iSCSI Storage
+Start-Service MSiSCSI
+New-IscsiTargetPortal -TargetPortalAddress "192.168.1.50"
+Get-IscsiTarget | Connect-IscsiTarget -IsPersistent $true
+
+# تهيئة الـ Shared Disk على Node1 بس
+Initialize-Disk -Number 1 -PartitionStyle GPT
+New-Partition -DiskNumber 1 -UseMaximumSize -DriveLetter Q
+Format-Volume -DriveLetter Q -FileSystem NTFS -NewFileSystemLabel "Cluster_Quorum" -Confirm:$false
+
+# اختبار
+Test-Cluster -Node "SRV-NODE1","SRV-NODE2"
+
+# إنشاء
+New-Cluster -Name "FS-CLUSTER" -Node "SRV-NODE1","SRV-NODE2" -StaticAddress "192.168.1.100"</pre><h3>تمرين 2: إضافة File Server Role</h3><pre># إضافة Role
+Add-ClusterFileServerRole -Cluster "FS-CLUSTER" -Name "ClusterFS" -StaticAddress "192.168.1.101" -Storage "Cluster Disk 1"
+
+# مشاركة مجلد
+Add-ClusterSharedVolume -Name "Cluster Disk 2"
+New-SmbShare -Name "ClusterShare" -Path "C:\ClusterStorage\Volume1\SharedData"</pre><h3>تمرين 3: اختبار الـ Failover</h3><pre># من Cluster Manager:
+# اعمل Pause ثم Drain على Node1
+# الـ Resources المفروض تنتقل لـ Node2 تلقائياً
+
+# أو من PowerShell:
+Suspend-ClusterNode -Name "SRV-NODE1" -Drain
+# تحقق إن الـ Roles انتقلت
+Get-ClusterResource | Select Name, State, OwnerNode</pre></div>
+            </div>
+    </main>
+    <footer class="site-footer">دروس MCSA | Windows Server</footer>
+  </div>
+</body>
+</html>

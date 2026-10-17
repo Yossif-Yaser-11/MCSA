@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0a0f1d">
+  <title>Promoting Server - ترقية السيرفر لـ Domain Controller | MCSA</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="../mcsa-theme.css">
+  <script src="../mcsa-interactions.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="site-header">
+      <p class="eyebrow"><i class="fa-brands fa-microsoft" aria-hidden="true"></i> MCSA | Windows Server</p>
+      <h1>Promoting Server - ترقية السيرفر لـ Domain Controller</h1>
+      <p>شرح نظري وتطبيق عملي لإدارة Windows Server.</p>
+    </header>
+    <a class="back-link" href="../index.html"><i class="fa-solid fa-arrow-right" aria-hidden="true"></i> العودة إلى فهرس الدروس</a>
+    <nav class="tab-nav" role="tablist" aria-label="أقسام الدرس">
+      <button class="tab-button" id="theory-tab" type="button" role="tab" aria-selected="true" aria-controls="tab-theory"><i class="fa-solid fa-book-open" aria-hidden="true"></i> الجزء النظري</button>
+      <button class="tab-button" id="practical-tab" type="button" role="tab" aria-selected="false" aria-controls="tab-practical"><i class="fa-solid fa-server" aria-hidden="true"></i> التطبيق العملي</button>
+    </nav>
+    <main class="lesson-content">
+<div class="tab-pane active" id="tab-theory">
+    <div class="theory">
+        
+        <p>الـ Domain Controller (DC) هو السيرفر اللى بيتحكم فى الـ Active Directory Domain. بيحفظ قاعدة بيانات المستخدمين والأجهزة ومسؤول عن المصادقة.</p>
+        
+        <h2 class="section-title">مصطلحات أساسية</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>المصطلح</th>
+                    <th>الشرح</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Domain</td>
+                    <td>مجموعة من الأجهزة والمستخدمين تحت إدارة مركزية</td>
+                </tr>
+                <tr>
+                    <td>Domain Controller (DC)</td>
+                    <td>السيرفر المسؤول عن الـ Domain</td>
+                </tr>
+                <tr>
+                    <td>Forest</td>
+                    <td>مجموعة من الـ Domains بتشارك Schema واحدة</td>
+                </tr>
+                <tr>
+                    <td>Tree</td>
+                    <td>مجموعة Domains بنفس الـ Namespace</td>
+                </tr>
+                <tr>
+                    <td>Schema</td>
+                    <td>تعريف أنواع الـ Objects فى الـ AD</td>
+                </tr>
+                <tr>
+                    <td>FSMO Roles</td>
+                    <td>وظائف خاصة موزعة على الـ DCs</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2 class="section-title">خطوات الـ Promotion</h2>
+        <ol>
+            <li>تثبيت AD DS Role أولاً</li>
+            <li>تشغيل Promote this server to a domain controller</li>
+            <li>اختيار: Add a new forest (للـ Domain الأول)</li>
+            <li>كتابة اسم الـ Domain: <code>networkat.local</code></li>
+            <li>تحديد الـ Forest Functional Level و Domain Functional Level</li>
+            <li>تعيين كلمة سر الـ DSRM (Directory Services Restore Mode)</li>
+            <li>مراجعة الإعدادات والتثبيت</li>
+            <li>السيرفر هيعمل Restart تلقائياً</li>
+        </ol>
+
+        <h2 class="section-title">FSMO Roles - الخمس وظائف</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>الوظيفة</th>
+                    <th>النطاق</th>
+                    <th>الوظيفة</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Schema Master</td>
+                    <td>Forest</td>
+                    <td>التحكم فى الـ Schema</td>
+                </tr>
+                <tr>
+                    <td>Domain Naming Master</td>
+                    <td>Forest</td>
+                    <td>إضافة وحذف الـ Domains</td>
+                </tr>
+                <tr>
+                    <td>PDC Emulator</td>
+                    <td>Domain</td>
+                    <td>مزامنة الوقت وتغيير كلمات السر</td>
+                </tr>
+                <tr>
+                    <td>RID Master</td>
+                    <td>Domain</td>
+                    <td>توزيع الـ RIDs على الـ DCs</td>
+                </tr>
+                <tr>
+                    <td>Infrastructure Master</td>
+                    <td>Domain</td>
+                    <td>مزامنة الـ Objects بين الـ Domains</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2 class="section-title">إضافة DC ثانى (Redundancy)</h2>
+        <pre># على السيرفر الجديد
+Install-WindowsFeature -Name AD-Domain-Services -IncludeManagementTools
+Import-Module ADDSDeployment
+Install-ADDSDomainController -DomainName "networkat.local" -InstallDns:$true -Credential (Get-Credential)</pre>
+    </div>
+</div>
+
+<div class="tab-pane" id="tab-practical">
+    <div class="theory">
+        <h2 class="section-title">التطبيق العملى - Promotion</h2>
+        
+        <h3>تمرين 1: Promote من PowerShell</h3>
+        <pre># تثبيت الـ Role
+Install-WindowsFeature -Name AD-Domain-Services -IncludeManagementTools
+
+# Promote للـ Domain الأول
+Import-Module ADDSDeployment
+Install-ADDSForest `
+    -DomainName "networkat.local" `
+    -DomainNetbiosName "NETWORKAT" `
+    -ForestMode "WinThreshold" `
+    -DomainMode "WinThreshold" `
+    -InstallDns:$true `
+    -SafeModeAdministratorPassword (ConvertTo-SecureString "DSRM@Pass123" -AsPlainText -Force) `
+    -Force:$true</pre>
+
+        <h3>تمرين 2: التحقق بعد الـ Promotion</h3>
+        <pre># التحقق من الـ Domain
+Get-ADDomain
+
+# التحقق من الـ DC
+Get-ADDomainController
+
+# التحقق من الـ FSMO
+netdom query fsmo
+
+# التحقق من الـ DNS
+Get-DnsServerZone
+nslookup networkat.local</pre>
+
+        <h3>تمرين 3: انضمام جهاز للـ Domain</h3>
+        <pre># من PowerShell على الـ Client
+Add-Computer -DomainName "networkat.local" -Credential (Get-Credential) -Restart
+
+# التحقق
+(Get-WmiObject Win32_ComputerSystem).Domain</pre>
+    </div>
+</div>
+    </main>
+    <footer class="site-footer">دروس MCSA | Windows Server</footer>
+  </div>
+</body>
+</html>

@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0a0f1d">
+  <title>Server Monitor - مراقبة السيرفر | MCSA</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="../mcsa-theme.css">
+  <script src="../mcsa-interactions.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="site-header">
+      <p class="eyebrow"><i class="fa-brands fa-microsoft" aria-hidden="true"></i> MCSA | Windows Server</p>
+      <h1>Server Monitor - مراقبة السيرفر</h1>
+      <p>شرح نظري وتطبيق عملي لإدارة Windows Server.</p>
+    </header>
+    <a class="back-link" href="../index.html"><i class="fa-solid fa-arrow-right" aria-hidden="true"></i> العودة إلى فهرس الدروس</a>
+    <nav class="tab-nav" role="tablist" aria-label="أقسام الدرس">
+      <button class="tab-button" id="theory-tab" type="button" role="tab" aria-selected="true" aria-controls="tab-theory"><i class="fa-solid fa-book-open" aria-hidden="true"></i> الجزء النظري</button>
+      <button class="tab-button" id="practical-tab" type="button" role="tab" aria-selected="false" aria-controls="tab-practical"><i class="fa-solid fa-server" aria-hidden="true"></i> التطبيق العملي</button>
+    </nav>
+    <main class="lesson-content">
+ <div class="tab-pane active" id="tab-theory">
+                <div class="theory"><p>مراقبة السيرفر ضرورية عشان تكتشف المشاكل قبل ما تأثر على المستخدمين. Windows Server بيوفّر أدوات مراقبة قوية.</p><h2 class="section-title">Performance Monitor</h2><p>بيراقب الأداء لحظة بلحظة:</p><pre># تشغيل Performance Monitor
+perfmon
+
+# من PowerShell
+Get-Counter -Counter "\Processor(_Total)\% Processor Time" -Continuous -SampleInterval 5
+Get-Counter -Counter "\Memory\Available MBytes"
+Get-Counter -Counter "\LogicalDisk(C:)\% Disk Time"</pre><h2 class="section-title">المؤشرات المهمة للمراقبة</h2><table><tr><th>المؤشر</th><th>التحذير</th><th>الخطر</th></tr><tr><td>CPU Usage</td><td>70%+</td><td>90%+</td></tr><tr><td>Memory Available</td><td>أقل من 20%</td><td>أقل من 10%</td></tr><tr><td>Disk Queue Length</td><td>أكبر من 2</td><td>أكبر من 5</td></tr><tr><td>Network Utilization</td><td>70%+</td><td>90%+</td></tr></table><h2 class="section-title">Resource Monitor</h2><pre># تشغيل Resource Monitor
+resmon
+# بيوضح بالتفصيل:
+# - CPU: الـ Processes الأكثر استهلاكاً
+# - Memory: الـ Working Set لكل Process
+# - Disk: I/O لكل Process وكل ملف
+# - Network: الاتصالات النشطة والـ Bandwidth</pre><h2 class="section-title">Event Viewer</h2><pre># من PowerShell
+# أحداث الـ System خلال آخر ساعة
+Get-WinEvent -LogName System -MaxEvents 50 | Where-Object {$_.LevelDisplayName -eq "Error"} | Select TimeCreated, Id, Message
+
+# أحداث الأمان
+Get-WinEvent -LogName Security -FilterHashtable @{Id=4625; StartTime=(Get-Date).AddDays(-1)} | Select TimeCreated, Message
+
+# Application Errors
+Get-WinEvent -LogName Application | Where-Object {$_.LevelDisplayName -eq "Error"} | Group-Object -Property {$_.ProviderName} | Sort-Object Count -Descending | Select Count, Name</pre><h2 class="section-title">Windows Server Essentials Dashboard</h2><pre># تثبيت SCOM (System Center Operations Manager)
+# أو استخدام الأدوات المجانية:
+# - Windows Admin Center (WAC): أحدث أداة من Microsoft
+# - Grafana + Prometheus: للمراقبة المتقدمة
+
+# Windows Admin Center
+# تثبيته على السيرفر وإدارة كل السيرفرات من واجهة Web واحدة</pre></div>
+            </div>
+
+    <div class="tab-pane" id="tab-practical">
+                <div class="theory"><h2 class="section-title">التطبيق العملى - Server Monitoring</h2><h3>تمرين 1: إعداد Performance Monitor</h3><pre># إنشاء Data Collector Set
+$name = "Daily_Performance"
+$logpath = "C:\PerfLogs\Admin\Daily_Performance"
+New-Item -Path $logpath -ItemType Directory -Force
+
+# إضافة Counters
+logman create counter $name -f csv -o "$logpath\log" -si 60 -c `
+    "\Processor(_Total)\% Processor Time" `
+    "\Memory\Available MBytes" `
+    "\LogicalDisk(_Total)\% Disk Time" `
+    "\Network Interface(*)\Bytes Total/sec"
+
+# تشغيل التجميع
+logman start $name
+
+# إيقاف بعد ساعة
+Start-Sleep -Seconds 3600
+logman stop $name</pre><h3>تمرين 2: Alert على CPU مرتفع</h3><pre># Script للتنبيه على CPU > 80%
+while ($true) {
+    $cpu = (Get-Counter "\Processor(_Total)\% Processor Time").CounterSamples[0].CookedValue
+    
+    if ($cpu -gt 80) {
+        $message = "ALERT: CPU Usage = $([math]::Round($cpu, 1))% at $(Get-Date)"
+        Write-EventLog -LogName Application -Source "Monitoring" -EventId 9001 -EntryType Warning -Message $message
+        
+        # إرسال Email
+        Send-MailMessage -To "admin@networkat.local" -From "server@networkat.local" -Subject "CPU Alert" -Body $message -SmtpServer "mail.networkat.local"
+        
+        # الـ Top Processes
+        Get-Process | Sort-Object CPU -Descending | Select -First 5 | ForEach-Object {
+            Write-Host "$($_.Name): $([math]::Round($_.CPU, 1))s CPU time"
+        }
+    }
+    Start-Sleep -Seconds 60
+}</pre><h3>تمرين 3: Event Log Management</h3><pre># مسح الـ Event Logs القديمة
+Get-WinEvent -ListLog * | Where-Object {$_.RecordCount -gt 10000} | ForEach-Object {
+    Write-Host "Clearing: $($_.LogName) ($($_.RecordCount) events)"
+    wevtutil cl $_.LogName
+}
+
+# أرشفة الـ Logs
+wevtutil epl Security "D:\Logs\Security_$(Get-Date -Format yyyyMMdd).evtx"</pre></div>
+            </div>
+    </main>
+    <footer class="site-footer">دروس MCSA | Windows Server</footer>
+  </div>
+</body>
+</html>

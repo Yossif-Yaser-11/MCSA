@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0a0f1d">
+  <title>WDS - Windows Deployment Services الجزء الأول | MCSA</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="../mcsa-theme.css">
+  <script src="../mcsa-interactions.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="site-header">
+      <p class="eyebrow"><i class="fa-brands fa-microsoft" aria-hidden="true"></i> MCSA | Windows Server</p>
+      <h1>WDS - Windows Deployment Services الجزء الأول</h1>
+      <p>شرح نظري وتطبيق عملي لإدارة Windows Server.</p>
+    </header>
+    <a class="back-link" href="../index.html"><i class="fa-solid fa-arrow-right" aria-hidden="true"></i> العودة إلى فهرس الدروس</a>
+    <nav class="tab-nav" role="tablist" aria-label="أقسام الدرس">
+      <button class="tab-button" id="theory-tab" type="button" role="tab" aria-selected="true" aria-controls="tab-theory"><i class="fa-solid fa-book-open" aria-hidden="true"></i> الجزء النظري</button>
+      <button class="tab-button" id="practical-tab" type="button" role="tab" aria-selected="false" aria-controls="tab-practical"><i class="fa-solid fa-server" aria-hidden="true"></i> التطبيق العملي</button>
+    </nav>
+    <main class="lesson-content">
+ <div class="tab-pane active" id="tab-theory">
+                <div class="theory"><p>الـ WDS بيخليك تثبّت Windows على أجهزة كتير عبر الشبكة من غير ما تحتاج USB أو DVD لكل جهاز. مثالى للشركات اللى محتاجة تثبّت نظام على عشرات أو مئات الأجهزة.</p><h2 class="section-title">مكونات WDS</h2><ul><li><strong>WDS Server:</strong> السيرفر اللى بيحتضن الـ Images</li><li><strong>Boot Image (WinPE):</strong> البيئة اللى بتشتغل أول ما الجهاز يبدأ عبر الشبكة</li><li><strong>Install Image:</strong> الـ Windows Image اللى هيتثبّت</li><li><strong>PXE Boot:</strong> بروتوكول تشغيل الجهاز عبر الشبكة</li><li><strong>DHCP:</strong> مطلوب لتوزيع الـ IPs على الأجهزة الجديدة</li></ul><h2 class="section-title">متطلبات WDS</h2><ul><li>Active Directory Domain</li><li>DHCP Server</li><li>DNS Server</li><li>NTFS Partition لتخزين الـ Images</li><li>شبكة بـ PXE Support</li></ul><h2 class="section-title">تثبيت وإعداد WDS</h2><pre># تثبيت الـ Role
+Install-WindowsFeature -Name WDS -IncludeManagementTools
+
+# إعداد WDS
+WDSUtil /Initialize-Server /RemInst:"D:\RemoteInstall"
+WDSUtil /Set-Server /AnswerClients:All
+
+# أو من PowerShell
+Import-Module WDS
+Initialize-WdsServer -RemInstPath "D:\RemoteInstall" -Authorize</pre><h2 class="section-title">إضافة Boot Image</h2><pre># استخراج Boot Image من الـ ISO
+# Mount الـ ISO أولاً
+Mount-DiskImage -ImagePath "C:\Windows2016.iso"
+
+# نسخ الـ boot.wim
+Copy-Item "E:\sources\boot.wim" "C:\Temp\"
+
+# إضافة لـ WDS
+Import-WdsBootImage -Path "C:\Temp\boot.wim" -NewImageName "Windows PE Boot" -NewDescription "Boot Environment for Deployment"</pre><h2 class="section-title">إضافة Install Image</h2><pre># إنشاء Image Group
+New-WdsImageGroup -Name "Windows Server 2016"
+
+# إضافة Install Image
+Import-WdsInstallImage -Path "E:\sources\install.wim" -ImageGroup "Windows Server 2016" -ImageName "Windows Server 2016 Standard" -NewImageName "WS2016 Standard"</pre></div>
+            </div>
+
+    <div class="tab-pane" id="tab-practical">
+                <div class="theory"><h2 class="section-title">التطبيق العملى - WDS الجزء الأول</h2><h3>تمرين 1: إعداد WDS Server كامل</h3><pre># تثبيت الـ Role
+Install-WindowsFeature -Name WDS, WDS-Deployment, WDS-Transport -IncludeManagementTools
+
+# إنشاء مجلد الـ RemoteInstall
+New-Item -Path "D:\RemoteInstall" -ItemType Directory
+
+# إعداد WDS
+WDSUtil /Initialize-Server /RemInst:"D:\RemoteInstall"
+WDSUtil /Set-Server /AnswerClients:All
+WDSUtil /Set-Server /PxePromptPolicy /New:OptOut  # بيبدأ تلقائى بدون Prompt</pre><h3>تمرين 2: إضافة الـ Images</h3><pre># Mount الـ ISO
+Mount-DiskImage -ImagePath "C:\WS2016.iso"
+$drive = (Get-DiskImage "C:\WS2016.iso" | Get-Volume).DriveLetter
+
+# إضافة Boot Image
+Import-WdsBootImage -Path "${drive}:\sources\boot.wim" -NewImageName "WinPE WDS Boot"
+
+# إنشاء Image Group وإضافة Install Image
+New-WdsImageGroup -Name "Windows Server 2016"
+Import-WdsInstallImage -Path "${drive}:\sources\install.wim" -ImageGroup "Windows Server 2016" -ImageName "Windows Server 2016 SERVERSTANDARD" -NewImageName "WS2016 Standard Desktop"
+
+# Unmount الـ ISO
+Dismount-DiskImage -ImagePath "C:\WS2016.iso"</pre><h3>تمرين 3: اختبار PXE Boot</h3><ol><li>اعمل VM جديد بدون HDD أو بـ HDD فاضى</li><li>فى الـ Boot Options: فعّل Network Boot / PXE</li><li>شغّل الـ VM - المفروض يبدأ الـ WDS Boot</li><li>اتبع خطوات التثبيت</li></ol></div>
+            </div>
+    </main>
+    <footer class="site-footer">دروس MCSA | Windows Server</footer>
+  </div>
+</body>
+</html>

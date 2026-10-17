@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0a0f1d">
+  <title>Windows Firewall | MCSA</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="../mcsa-theme.css">
+  <script src="../mcsa-interactions.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="site-header">
+      <p class="eyebrow"><i class="fa-brands fa-microsoft" aria-hidden="true"></i> MCSA | Windows Server</p>
+      <h1>Windows Firewall</h1>
+      <p>شرح نظري وتطبيق عملي لإدارة Windows Server.</p>
+    </header>
+    <a class="back-link" href="../index.html"><i class="fa-solid fa-arrow-right" aria-hidden="true"></i> العودة إلى فهرس الدروس</a>
+    <nav class="tab-nav" role="tablist" aria-label="أقسام الدرس">
+      <button class="tab-button" id="theory-tab" type="button" role="tab" aria-selected="true" aria-controls="tab-theory"><i class="fa-solid fa-book-open" aria-hidden="true"></i> الجزء النظري</button>
+      <button class="tab-button" id="practical-tab" type="button" role="tab" aria-selected="false" aria-controls="tab-practical"><i class="fa-solid fa-server" aria-hidden="true"></i> التطبيق العملي</button>
+    </nav>
+    <main class="lesson-content">
+ <div class="tab-pane active" id="tab-theory">
+                <div class="theory"><p>الـ Windows Firewall بيحمى السيرفر من الاتصالات غير المصرح بها. بيتحكم فى الـ Traffic الداخل والخارج بناءً على Rules محددة.</p><h2 class="section-title">Windows Firewall Profiles</h2><ul><li><strong>Domain Profile:</strong> بيطبق لما الجهاز متصل بالـ Domain</li><li><strong>Private Profile:</strong> للشبكات الخاصة الموثوقة</li><li><strong>Public Profile:</strong> للشبكات العامة - الأشد تقييداً</li></ul><h2 class="section-title">إدارة الـ Firewall</h2><pre># عرض حالة الـ Firewall
+Get-NetFirewallProfile | Select Name, Enabled, DefaultInboundAction, DefaultOutboundAction
+
+# تفعيل/تعطيل الـ Firewall
+Set-NetFirewallProfile -Profile Domain -Enabled True
+Set-NetFirewallProfile -All -Enabled True
+
+# تغيير السلوك الافتراضى
+Set-NetFirewallProfile -Profile Domain -DefaultInboundAction Block -DefaultOutboundAction Allow</pre><h2 class="section-title">إنشاء Firewall Rules</h2><pre># السماح بـ Port محدد (HTTP)
+New-NetFirewallRule -DisplayName "Allow HTTP" -Direction Inbound -Protocol TCP -LocalPort 80 -Action Allow -Profile Domain
+
+# السماح بـ Port Range
+New-NetFirewallRule -DisplayName "Allow RDP Range" -Direction Inbound -Protocol TCP -LocalPort 3389 -Action Allow -RemoteAddress "192.168.1.0/24"
+
+# منع تطبيق معين
+New-NetFirewallRule -DisplayName "Block BitTorrent" -Direction Outbound -Program "C:\Program Files\BitTorrent\BitTorrent.exe" -Action Block
+
+# السماح بـ ICMP (Ping)
+New-NetFirewallRule -DisplayName "Allow Ping" -Direction Inbound -Protocol ICMPv4 -IcmpType 8 -Action Allow</pre><h2 class="section-title">إدارة Rules الموجودة</h2><pre># عرض كل الـ Rules
+Get-NetFirewallRule | Where-Object Enabled -eq True | Select DisplayName, Direction, Action
+
+# تعطيل Rule
+Disable-NetFirewallRule -DisplayName "Allow HTTP"
+
+# حذف Rule
+Remove-NetFirewallRule -DisplayName "Allow HTTP"
+
+# نسخ Rule لـ GPO
+# Computer Config → Windows Settings → Security Settings → Windows Firewall with Advanced Security</pre></div>
+            </div>
+
+    <div class="tab-pane" id="tab-practical">
+                <div class="theory"><h2 class="section-title">التطبيق العملى - Windows Firewall</h2><h3>تمرين 1: إعداد Firewall للـ Web Server</h3><pre># السيرفر ده Web Server - نسمح HTTP و HTTPS بس من الإنترنت
+
+# Block كل حاجة Inbound بالـ Default
+Set-NetFirewallProfile -Profile Public -DefaultInboundAction Block
+
+# السماح بـ HTTP و HTTPS
+New-NetFirewallRule -DisplayName "Web HTTP" -Direction Inbound -Protocol TCP -LocalPort 80 -Action Allow -Profile Public
+New-NetFirewallRule -DisplayName "Web HTTPS" -Direction Inbound -Protocol TCP -LocalPort 443 -Action Allow -Profile Public
+
+# السماح بـ RDP من الـ LAN بس
+New-NetFirewallRule -DisplayName "RDP from LAN" -Direction Inbound -Protocol TCP -LocalPort 3389 -RemoteAddress "192.168.1.0/24" -Action Allow
+
+# السماح بـ Ping للـ Monitoring
+New-NetFirewallRule -DisplayName "Allow Ping" -Direction Inbound -Protocol ICMPv4 -IcmpType 8 -RemoteAddress "192.168.1.0/24" -Action Allow</pre><h3>تمرين 2: Firewall via Group Policy</h3><pre># من GPMC:
+# Computer Config → Security Settings → Windows Firewall with Advanced Security
+# Inbound Rules → New Rule
+# Port → TCP → 443 → Allow → Domain,Private
+
+# أو بـ PowerShell على الـ GPO
+Set-GPRegistryValue -Name "Firewall_Policy" -Key "HKLM\SOFTWARE\Policies\Microsoft\WindowsFirewall\DomainProfile" -ValueName "EnableFirewall" -Type DWORD -Value 1</pre><h3>تمرين 3: Firewall Logging</h3><pre># تفعيل الـ Logging
+Set-NetFirewallProfile -Profile Domain -LogFileName "C:\Windows\System32\LogFiles\Firewall\pfirewall.log" -LogMaxSizeKilobytes 4096 -LogAllowed True -LogBlocked True
+
+# قراءة الـ Log
+Get-Content "C:\Windows\System32\LogFiles\Firewall\pfirewall.log" | Select-Object -Last 50</pre></div>
+            </div>
+
+    </main>
+    <footer class="site-footer">دروس MCSA | Windows Server</footer>
+  </div>
+</body>
+</html>

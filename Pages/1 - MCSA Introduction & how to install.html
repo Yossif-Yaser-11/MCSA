@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0a0f1d">
+  <title>مقدمة MCSA 2016 وتثبيت Windows Server | MCSA</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="../mcsa-theme.css">
+  <script src="../mcsa-interactions.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="site-header">
+      <p class="eyebrow"><i class="fa-brands fa-microsoft" aria-hidden="true"></i> MCSA | Windows Server</p>
+      <h1>مقدمة MCSA 2016 وتثبيت Windows Server</h1>
+      <p>شرح نظري وتطبيق عملي لإدارة Windows Server.</p>
+    </header>
+    <a class="back-link" href="../index.html"><i class="fa-solid fa-arrow-right" aria-hidden="true"></i> العودة إلى فهرس الدروس</a>
+    <nav class="tab-nav" role="tablist" aria-label="أقسام الدرس">
+      <button class="tab-button" id="theory-tab" type="button" role="tab" aria-selected="true" aria-controls="tab-theory"><i class="fa-solid fa-book-open" aria-hidden="true"></i> الجزء النظري</button>
+      <button class="tab-button" id="practical-tab" type="button" role="tab" aria-selected="false" aria-controls="tab-practical"><i class="fa-solid fa-server" aria-hidden="true"></i> التطبيق العملي</button>
+    </nav>
+    <main class="lesson-content">
+<div class="tab-pane active" id="tab-theory">
+    <div class="theory">
+        
+        <p>الـ MCSA (Microsoft Certified Solutions Associate) شهادة من Microsoft بتثبت كفاءتك فى إدارة Windows Server. Windows Server 2016 هو نظام التشغيل المخصص للسيرفرات من Microsoft.</p>
+        
+        <h2 class="section-title">إصدارات Windows Server 2016</h2>
+        <table>
+            <tr>
+                <th>الإصدار</th>
+                <th>الاستخدام</th>
+                <th>الـ GUI</th>
+            </tr>
+            <tr>
+                <td>Datacenter</td>
+                <td>بيئات الـ Virtualization الكثيفة</td>
+                <td>نعم</td>
+            </tr>
+            <tr>
+                <td>Standard</td>
+                <td>الشركات المتوسطة</td>
+                <td>نعم</td>
+            </tr>
+            <tr>
+                <td>Essentials</td>
+                <td>الشركات الصغيرة (حد 25 مستخدم)</td>
+                <td>نعم</td>
+            </tr>
+            <tr>
+                <td>Core</td>
+                <td>أى إصدار بدون GUI - للـ Admins المتقدمين</td>
+                <td>لأ</td>
+            </tr>
+        </table>
+
+        <h2 class="section-title">متطلبات التثبيت</h2>
+        <table>
+            <tr>
+                <th>المكوّن</th>
+                <th>الحد الأدنى</th>
+                <th>الموصى به</th>
+            </tr>
+            <tr>
+                <td>المعالج</td>
+                <td>1.4 GHz 64-bit</td>
+                <td>2 GHz+</td>
+            </tr>
+            <tr>
+                <td>الـ RAM</td>
+                <td>512 MB (Core) / 2 GB (GUI)</td>
+                <td>16 GB+</td>
+            </tr>
+            <tr>
+                <td>القرص الصلب</td>
+                <td>32 GB</td>
+                <td>100 GB+</td>
+            </tr>
+            <tr>
+                <td>الشبكة</td>
+                <td>Ethernet 1 Gbps</td>
+                <td>10 Gbps</td>
+            </tr>
+        </table>
+
+        <h2 class="section-title">طرق التثبيت</h2>
+        <ul>
+            <li><strong>Clean Install:</strong> تثبيت جديد على قرص فاضى - الأفضل للأداء</li>
+            <li><strong>Upgrade:</strong> ترقية من إصدار أقدم - محتاج تأكد من التوافق</li>
+            <li><strong>Server Core:</strong> بدون واجهة رسومية - أسرع وأأمن وأقل استهلاكاً للـ Resources</li>
+        </ul>
+
+        <h2 class="section-title">Server Roles المهمة</h2>
+        <ul>
+            <li><strong>Active Directory Domain Services (AD DS):</strong> إدارة المستخدمين والأجهزة</li>
+            <li><strong>DNS Server:</strong> ترجمة الأسماء لعناوين IP</li>
+            <li><strong>DHCP Server:</strong> توزيع العناوين تلقائياً</li>
+            <li><strong>File and Storage Services:</strong> مشاركة الملفات</li>
+            <li><strong>Web Server (IIS):</strong> استضافة المواقع</li>
+            <li><strong>Hyper-V:</strong> الـ Virtualization</li>
+        </ul>
+
+        <h2 class="section-title">إضافة Role على Windows Server</h2>
+        <pre>! من الـ GUI
+1. افتح Server Manager
+2. دوس Add Roles and Features
+3. اختار Role-based installation
+4. اختار الـ Role المطلوب
+5. دوس Install
+
+! من PowerShell
+Install-WindowsFeature -Name AD-Domain-Services -IncludeManagementTools
+Install-WindowsFeature -Name DHCP -IncludeManagementTools
+Install-WindowsFeature -Name DNS -IncludeManagementTools</pre>
+    </div>
+</div>
+
+<div class="tab-pane" id="tab-practical">
+    <div class="theory">
+        <h2 class="section-title">التطبيق العملى - تثبيت Windows Server 2016</h2>
+        <h3>خطوات التثبيت</h3>
+        <ol>
+            <li>حمّل ISO من موقع Microsoft Evaluation Center</li>
+            <li>افتح VMware أو Hyper-V</li>
+            <li>اعمل VM جديد: 2 CPU, 4 GB RAM, 60 GB HDD</li>
+            <li>اختار الـ ISO وابدأ التثبيت</li>
+            <li>اختار "Windows Server 2016 Standard (Desktop Experience)"</li>
+            <li>اختار Custom Install</li>
+            <li>اختار القرص وابدأ التثبيت</li>
+            <li>حط كلمة سر للـ Administrator (لازم تكون قوية)</li>
+        </ol>
+
+        <h3>إعداد ما بعد التثبيت</h3>
+        <pre># فى PowerShell
+# تغيير اسم السيرفر
+Rename-Computer -NewName "SRV-DC01" -Restart
+
+# تعيين IP ثابت
+New-NetIPAddress -InterfaceAlias "Ethernet" -IPAddress 192.168.1.10 -PrefixLength 24 -DefaultGateway 192.168.1.1
+Set-DnsClientServerAddress -InterfaceAlias "Ethernet" -ServerAddresses 192.168.1.10
+
+# تفعيل Remote Desktop
+Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server" -Name "fDenyTSConnections" -Value 0
+Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+
+# تثبيت AD DS
+Install-WindowsFeature -Name AD-Domain-Services -IncludeManagementTools</pre>
+
+        <h3>التحقق من الإعداد</h3>
+        <pre># التحقق من الـ IP
+ipconfig /all
+
+# التحقق من الـ Features المثبتة
+Get-WindowsFeature | Where-Object {$_.Installed -eq $true}</pre>
+    </div>
+</div>
+    </main>
+    <footer class="site-footer">دروس MCSA | Windows Server</footer>
+  </div>
+</body>
+</html>

@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0a0f1d">
+  <title>Share Folders و File Permissions | MCSA</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="../mcsa-theme.css">
+  <script src="../mcsa-interactions.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="site-header">
+      <p class="eyebrow"><i class="fa-brands fa-microsoft" aria-hidden="true"></i> MCSA | Windows Server</p>
+      <h1>Share Folders و File Permissions</h1>
+      <p>شرح نظري وتطبيق عملي لإدارة Windows Server.</p>
+    </header>
+    <a class="back-link" href="../index.html"><i class="fa-solid fa-arrow-right" aria-hidden="true"></i> العودة إلى فهرس الدروس</a>
+    <nav class="tab-nav" role="tablist" aria-label="أقسام الدرس">
+      <button class="tab-button" id="theory-tab" type="button" role="tab" aria-selected="true" aria-controls="tab-theory"><i class="fa-solid fa-book-open" aria-hidden="true"></i> الجزء النظري</button>
+      <button class="tab-button" id="practical-tab" type="button" role="tab" aria-selected="false" aria-controls="tab-practical"><i class="fa-solid fa-server" aria-hidden="true"></i> التطبيق العملي</button>
+    </nav>
+    <main class="lesson-content">
+<div class="tab-pane active" id="tab-theory">
+                <div class="theory"><p>مشاركة الملفات وإدارة الصلاحيات من أهم مهام الـ File Server Administrator. لازم تفهم الفرق بين الـ Share Permissions والـ NTFS Permissions.</p><h2 class="section-title">NTFS Permissions</h2><p>بتطبّق على مستوى الـ File System - بتأثر على كل الوصول سواء محلى أو عبر الشبكة:</p><table><tr><th>الصلاحية</th><th>الوصف</th></tr><tr><td>Full Control</td><td>كل الصلاحيات + تغيير الـ Permissions</td></tr><tr><td>Modify</td><td>قراءة + كتابة + حذف</td></tr><tr><td>Read & Execute</td><td>قراءة وتشغيل البرامج</td></tr><tr><td>Read</td><td>قراءة فقط</td></tr><tr><td>Write</td><td>كتابة فقط - مش بيقدر يقرأ</td></tr><tr><td>List Folder Contents</td><td>عرض محتويات المجلد فقط</td></tr></table><h2 class="section-title">Share Permissions</h2><p>بتطبّق فقط على الوصول عبر الشبكة - 3 مستويات بس:</p><ul><li><strong>Full Control:</strong> كل الصلاحيات</li><li><strong>Change:</strong> قراءة + كتابة + حذف</li><li><strong>Read:</strong> قراءة فقط</li></ul><h2 class="section-title">القاعدة المهمة</h2><p>لما المستخدم بيوصل عبر الشبكة، بيتطبق عليه الأضيق بين الـ NTFS Permissions والـ Share Permissions:</p><pre>مثال:
+- NTFS Permission: Full Control
+- Share Permission: Read
+= النتيجة: Read (الأضيق)
+
+- NTFS Permission: Read
+- Share Permission: Full Control
+= النتيجة: Read (الأضيق)</pre><h2 class="section-title">إنشاء Shared Folder</h2><pre># من PowerShell
+New-Item -Path "D:\Shared\HR_Data" -ItemType Directory
+
+# مشاركة المجلد
+New-SmbShare -Name "HR_Data" -Path "D:\Shared\HR_Data" -Description "HR Department Data" -FullAccess "Administrators" -ChangeAccess "DL_HR_RW" -ReadAccess "DL_HR_Read"
+
+# إعداد NTFS Permissions
+$acl = Get-Acl "D:\Shared\HR_Data"
+$rule = New-Object System.Security.AccessControl.FileSystemAccessRule("DL_HR_RW","Modify","ContainerInherit,ObjectInherit","None","Allow")
+$acl.AddAccessRule($rule)
+Set-Acl -Path "D:\Shared\HR_Data" -AclObject $acl</pre><h2 class="section-title">Inheritance</h2><p>الـ NTFS Permissions بتنتقل من المجلد الأب للمجلدات الفرعية تلقائياً. ممكن تقطع الـ Inheritance عشان تدى صلاحيات مختلفة:</p><pre># قطع الـ Inheritance
+$acl = Get-Acl "D:\Shared\HR_Data\Confidential"
+$acl.SetAccessRuleProtection($true, $false)  # قطع الـ Inheritance وعدم نسخ الـ Rules
+Set-Acl -Path "D:\Shared\HR_Data\Confidential" -AclObject $acl</pre></div>
+            </div>
+
+    <div class="tab-pane" id="tab-practical">
+                <div class="theory"><h2 class="section-title">التطبيق العملى - File Permissions</h2><h3>تمرين 1: إعداد File Server</h3><pre># تثبيت File Server Role
+Install-WindowsFeature -Name FS-FileServer -IncludeManagementTools
+
+# إنشاء هيكل المجلدات
+New-Item -Path "D:\Company" -ItemType Directory
+New-Item -Path "D:\Company\HR" -ItemType Directory
+New-Item -Path "D:\Company\IT" -ItemType Directory
+New-Item -Path "D:\Company\Shared" -ItemType Directory
+New-Item -Path "D:\Company\Management" -ItemType Directory
+
+# مشاركة كل قسم
+New-SmbShare -Name "HR$" -Path "D:\Company\HR" -FullAccess "Administrators" -ChangeAccess "GG_HR_Staff"
+New-SmbShare -Name "IT$" -Path "D:\Company\IT" -FullAccess "Administrators" -ChangeAccess "GG_IT_Staff"
+New-SmbShare -Name "Shared" -Path "D:\Company\Shared" -FullAccess "Administrators" -ReadAccess "Domain Users"</pre><h3>تمرين 2: إعداد NTFS Permissions بـ Script</h3><pre>function Set-FolderPermissions {
+    param($FolderPath, $GroupName, $Permission)
+    
+    $acl = Get-Acl $FolderPath
+    $rule = New-Object System.Security.AccessControl.FileSystemAccessRule(
+        $GroupName, $Permission, "ContainerInherit,ObjectInherit", "None", "Allow"
+    )
+    $acl.SetAccessRule($rule)
+    Set-Acl -Path $FolderPath -AclObject $acl
+    Write-Host "Set $Permission for $GroupName on $FolderPath"
+}
+
+Set-FolderPermissions "D:\Company\HR" "GG_HR_Staff" "Modify"
+Set-FolderPermissions "D:\Company\IT" "GG_IT_Staff" "Modify"
+Set-FolderPermissions "D:\Company\Shared" "Domain Users" "ReadAndExecute"
+Set-FolderPermissions "D:\Company\Management" "GG_Managers" "FullControl"</pre><h3>تمرين 3: التحقق من الصلاحيات</h3><pre># عرض NTFS Permissions
+(Get-Acl "D:\Company\HR").Access | Select IdentityReference, FileSystemRights, AccessControlType
+
+# عرض Share Permissions
+Get-SmbShareAccess -Name "HR$"
+
+# Test-Path للتحقق من الوصول
+$cred = Get-Credential "NETWORKAT\ahmed.ali"
+Invoke-Command -ComputerName "SRV-File" -Credential $cred -ScriptBlock {Get-ChildItem "\\SRV-File\HR$"}</pre></div>
+            </div>
+
+    </main>
+    <footer class="site-footer">دروس MCSA | Windows Server</footer>
+  </div>
+</body>
+</html>

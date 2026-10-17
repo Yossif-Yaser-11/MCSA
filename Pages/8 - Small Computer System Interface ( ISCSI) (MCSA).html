@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0a0f1d">
+  <title>iSCSI - Internet Small Computer System Interface | MCSA</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="../mcsa-theme.css">
+  <script src="../mcsa-interactions.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="site-header">
+      <p class="eyebrow"><i class="fa-brands fa-microsoft" aria-hidden="true"></i> MCSA | Windows Server</p>
+      <h1>iSCSI - Internet Small Computer System Interface</h1>
+      <p>شرح نظري وتطبيق عملي لإدارة Windows Server.</p>
+    </header>
+    <a class="back-link" href="../index.html"><i class="fa-solid fa-arrow-right" aria-hidden="true"></i> العودة إلى فهرس الدروس</a>
+    <nav class="tab-nav" role="tablist" aria-label="أقسام الدرس">
+      <button class="tab-button" id="theory-tab" type="button" role="tab" aria-selected="true" aria-controls="tab-theory"><i class="fa-solid fa-book-open" aria-hidden="true"></i> الجزء النظري</button>
+      <button class="tab-button" id="practical-tab" type="button" role="tab" aria-selected="false" aria-controls="tab-practical"><i class="fa-solid fa-server" aria-hidden="true"></i> التطبيق العملي</button>
+    </nav>
+    <main class="lesson-content">
+<div class="tab-pane active" id="tab-theory">
+                <div class="theory"><p>الـ iSCSI بيخليك توصّل بـ Storage بعيد عبر شبكة Ethernet العادية وتتعامل معاه كأنه قرص محلى. بديل اقتصادى للـ Fiber Channel SAN.</p><h2 class="section-title">مكونات iSCSI</h2><ul><li><strong>iSCSI Target:</strong> السيرفر اللى بيقدّم الـ Storage</li><li><strong>iSCSI Initiator:</strong> العميل اللى بيتصل بالـ Storage</li><li><strong>LUN (Logical Unit Number):</strong> وحدة الـ Storage المشتركة</li><li><strong>IQN (iSCSI Qualified Name):</strong> معرّف فريد لكل Target/Initiator</li></ul><h2 class="section-title">إعداد iSCSI Target على Windows Server</h2><pre># تثبيت الـ Role
+Install-WindowsFeature -Name FS-iSCSITarget-Server -IncludeManagementTools
+
+# إنشاء iSCSI Virtual Disk
+New-IscsiVirtualDisk -Path "C:\iSCSI\DataLUN.vhdx" -Size 100GB
+
+# إنشاء Target
+New-IscsiServerTarget -TargetName "DataTarget" -InitiatorIds @("IPAddress:192.168.1.50")
+
+# ربط الـ LUN بالـ Target
+Add-IscsiVirtualDiskTargetMapping -TargetName "DataTarget" -Path "C:\iSCSI\DataLUN.vhdx"</pre><h2 class="section-title">إعداد iSCSI Initiator على Windows</h2><pre># تشغيل الـ iSCSI Initiator Service
+Start-Service MSiSCSI
+Set-Service MSiSCSI -StartupType Automatic
+
+# الاتصال بالـ Target
+$target = New-IscsiTargetPortal -TargetPortalAddress "192.168.1.10"
+Get-IscsiTarget | Connect-IscsiTarget -IsPersistent $true
+
+# الـ Disk الجديد هيظهر فى Disk Management
+# هيّئه وأضفله Drive Letter عادى</pre><h2 class="section-title">MPIO - Multipath I/O</h2><p>الـ MPIO بيخليك تتصل بالـ Storage عبر أكتر من مسار - زيادة الأداء والـ Redundancy:</p><pre>Install-WindowsFeature -Name Multipath-IO
+Enable-MSDSMAutomaticClaim -BusType iSCSI</pre></div>
+            </div>
+
+    <div class="tab-pane" id="tab-practical">
+                <div class="theory"><h2 class="section-title">التطبيق العملى - iSCSI</h2><h3>تمرين 1: إعداد iSCSI Target Server</h3><pre># على SRV-Storage
+Install-WindowsFeature -Name FS-iSCSITarget-Server -IncludeManagementTools
+
+# إنشاء مجلد للـ LUNs
+New-Item -Path "C:\iSCSI_LUNs" -ItemType Directory
+
+# إنشاء Virtual Disk
+New-IscsiVirtualDisk -Path "C:\iSCSI_LUNs\SQL_LUN.vhdx" -Size 50GB
+New-IscsiVirtualDisk -Path "C:\iSCSI_LUNs\Exchange_LUN.vhdx" -Size 100GB
+
+# إنشاء Targets
+New-IscsiServerTarget -TargetName "SQL-Target" -InitiatorIds @("IPAddress:192.168.1.20")
+New-IscsiServerTarget -TargetName "Exchange-Target" -InitiatorIds @("IPAddress:192.168.1.30")
+
+# ربط الـ LUNs
+Add-IscsiVirtualDiskTargetMapping -TargetName "SQL-Target" -Path "C:\iSCSI_LUNs\SQL_LUN.vhdx"
+Add-IscsiVirtualDiskTargetMapping -TargetName "Exchange-Target" -Path "C:\iSCSI_LUNs\Exchange_LUN.vhdx"</pre><h3>تمرين 2: الاتصال من Client</h3><pre># على SRV-SQL (Initiator)
+Start-Service MSiSCSI
+Set-Service MSiSCSI -StartupType Automatic
+
+# الاتصال بالـ Target
+New-IscsiTargetPortal -TargetPortalAddress "192.168.1.10"
+$target = Get-IscsiTarget | Where-Object {$_.NodeAddress -like "*SQL*"}
+$target | Connect-IscsiTarget -IsPersistent $true
+
+# تهيئة الـ Disk الجديد
+Get-Disk | Where-Object PartitionStyle -eq Raw | Initialize-Disk -PartitionStyle GPT
+New-Partition -DiskNumber 2 -UseMaximumSize -DriveLetter F
+Format-Volume -DriveLetter F -FileSystem NTFS -NewFileSystemLabel "SQL_Data" -Confirm:$false</pre></div>
+            </div>
+
+    </main>
+    <footer class="site-footer">دروس MCSA | Windows Server</footer>
+  </div>
+</body>
+</html>

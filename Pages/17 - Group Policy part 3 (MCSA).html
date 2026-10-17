@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0a0f1d">
+  <title>Group Policy - الجزء الثالث - Advanced | MCSA</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="../mcsa-theme.css">
+  <script src="../mcsa-interactions.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="site-header">
+      <p class="eyebrow"><i class="fa-brands fa-microsoft" aria-hidden="true"></i> MCSA | Windows Server</p>
+      <h1>Group Policy - الجزء الثالث - Advanced</h1>
+      <p>شرح نظري وتطبيق عملي لإدارة Windows Server.</p>
+    </header>
+    <a class="back-link" href="../index.html"><i class="fa-solid fa-arrow-right" aria-hidden="true"></i> العودة إلى فهرس الدروس</a>
+    <nav class="tab-nav" role="tablist" aria-label="أقسام الدرس">
+      <button class="tab-button" id="theory-tab" type="button" role="tab" aria-selected="true" aria-controls="tab-theory"><i class="fa-solid fa-book-open" aria-hidden="true"></i> الجزء النظري</button>
+      <button class="tab-button" id="practical-tab" type="button" role="tab" aria-selected="false" aria-controls="tab-practical"><i class="fa-solid fa-server" aria-hidden="true"></i> التطبيق العملي</button>
+    </nav>
+    <main class="lesson-content">
+ <div class="tab-pane active" id="tab-theory">
+                <div class="theory"><h2 class="section-title">Administrative Templates</h2><p>الـ Administrative Templates (.admx files) بتضيف إعدادات إضافية للـ Group Policy. Microsoft وبرامج تانية زى Chrome و Firefox بتوفّر Templates خاصة بيها.</p><pre># نسخ الـ Templates للـ Central Store
+# إنشاء Central Store
+New-Item -Path "\\networkat.local\SYSVOL\networkat.local\Policies\PolicyDefinitions" -ItemType Directory
+
+# نسخ الـ Templates
+Copy-Item "C:\Windows\PolicyDefinitions\*" "\\networkat.local\SYSVOL\networkat.local\Policies\PolicyDefinitions\" -Recurse</pre><h2 class="section-title">AppLocker - تحكم فى البرامج</h2><p>الـ AppLocker بيسمحلك تحدد بالظبط أنهى برامج يقدر المستخدم يشغّلها:</p><pre># إنشاء AppLocker Rules
+$policy = Get-AppLockerPolicy -Local
+# من الـ GUI:
+# Computer Config → Windows Settings → Security Settings → Application Control → AppLocker
+# Executable Rules: Allow المسارات المعتمدة
+# Script Rules: منع Scripts من الـ Desktop
+# Windows Installer Rules: تحديد الـ MSI المسموح بيها
+
+# تفعيل خدمة AppLocker
+Set-Service -Name AppIDSvc -StartupType Automatic
+Start-Service AppIDSvc</pre><h2 class="section-title">Software Restriction Policies</h2><pre># بديل أبسط لـ AppLocker
+# Security Levels:
+# Disallowed: منع كل البرامج إلا المستثنيات
+# Unrestricted: السماح بكل البرامج إلا المحظورة
+
+# Path Rule: السماح لمجلدات معينة فقط
+# Hash Rule: السماح لملف معين بـ Hash محدد
+# Certificate Rule: السماح للبرامج الموقعة بشهادة معينة</pre><h2 class="section-title">GPO Backup و Restore</h2><pre># Backup GPO
+Backup-GPO -Name "Security_Policy" -Path "D:\GPO_Backup"
+
+# Backup كل الـ GPOs
+Backup-GPO -All -Path "D:\GPO_Backup"
+
+# Restore GPO
+Restore-GPO -Name "Security_Policy" -Path "D:\GPO_Backup"
+
+# Copy GPO لـ Domain تانى
+Copy-GPO -SourceGpoName "Security_Policy" -SourceDomain "networkat.local" -TargetGpoName "Security_Policy" -TargetDomain "newdomain.local"</pre></div>
+            </div>
+
+    <div class="tab-pane" id="tab-practical">
+                <div class="theory"><h2 class="section-title">التطبيق العملى - Group Policy Advanced</h2><h3>تمرين 1: AppLocker</h3><pre># تفعيل خدمة AppLocker
+Set-Service -Name AppIDSvc -StartupType Automatic
+Start-Service AppIDSvc
+
+# إنشاء Rules من الـ GUI
+# Computer Config → Security Settings → AppLocker
+# Configure Rule Enforcement: Executable Rules → Enforced
+# Create Default Rules (السماح لـ Windows وـ Program Files)
+# إضافة Rule لمنع تشغيل من Desktop والـ Downloads</pre><h3>تمرين 2: Startup Scripts</h3><pre># Script بيشتغل عند Startup
+$startupScript = @"
+# تحديث الوقت
+w32tm /resync
+
+# تنظيف الـ Temp Files
+Remove-Item "$env:TEMP\*" -Force -Recurse -ErrorAction SilentlyContinue
+
+# تسجيل الـ Event
+Write-EventLog -LogName Application -Source "Company" -EventId 1001 -Message "Startup Script Completed"
+"@
+
+$startupScript | Out-File "\\networkat.local\SYSVOL\networkat.local\Policies\Scripts\startup.ps1"
+
+# ربطه بـ GPO:
+# Computer Config → Windows Settings → Scripts → Startup → PowerShell Scripts</pre><h3>تمرين 3: GPO Testing</h3><pre># Testing بدون تطبيق فعلى (Modeling)
+gpresult /user "networkat\ahmed.ali" /h "C:\UserGPReport.html"
+
+# Simulate GPO على User
+Invoke-GPUpdate -Computer "PC-001" -Force -RandomDelayInMinutes 0
+
+# مشاهدة Events الخاصة بالـ GPO
+Get-WinEvent -LogName "Microsoft-Windows-GroupPolicy/Operational" | Select TimeCreated, Message | head -20</pre></div>
+            </div>
+    </main>
+    <footer class="site-footer">دروس MCSA | Windows Server</footer>
+  </div>
+</body>
+</html>
